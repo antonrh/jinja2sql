@@ -1,3 +1,3 @@
-from .base import JinjaQ
+from .core import JinjaQ
 
 __all__ = ["JinjaQ"]
