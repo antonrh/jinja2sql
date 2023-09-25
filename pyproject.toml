@@ -1,0 +1,81 @@
+[tool.poetry]
+name = "jinjaq"
+version = "0.1.0"
+description = "Jinja Query Templates for SQL"
+authors = ["Anton Ruhlov <antonruhlov@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/antonrh/jinjaq"
+keywords = ["sql", "query", "queries", "template", "jinja", "database", "db"]
+packages = [
+    { include = "jinjaq", from = "." },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+mkdocs = { version = "^1.4.2", optional = true }
+mkdocs-material = { version = "^9.1.13", optional = true }
+
+[tool.poetry.extras]
+docs = ["mkdocs", "mkdocs-material"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+mypy = "^1.5.1"
+ruff = "^0.0.291"
+pytest = "^7.4.2"
+pytest-cov = "^4.1.0"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 88
+select = ["A", "B", "C", "E", "F", "I", "W", "TID252", "T20"]
+ignore = ["A003", "B008", "B009", "B010", "D104", "D107"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".history"
+]
+
+[tool.ruff.isort]
+combine-as-imports = true
+forced-separate = ["tests"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+[[tool.mypy.overrides]]
+module = []
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+]
+xfail_strict = true
+junit_family = "xunit2"
+
+[tool.coverage.report]
+exclude_also = [
+    "pragma: no cover",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+    "if TYPE_CHECKING",
+    "if t.TYPE_CHECKING",
+    "@t.overload",
+    "raise NotImplementedError",
+    "except ImportError:",
+]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
