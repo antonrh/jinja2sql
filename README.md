@@ -1,4 +1,4 @@
-# JinjaQ
+# JinjaQ (Work in progress)
 
 `JinjaQ`` is a simple and efficient library for generating SQL queries from [https://jinja.palletsprojects.com/en/3.1.x/](Jinja2) templates. It is type-friendly and offers async support, drawing significant inspiration from the excellent library at [https://github.com/sripathikrishnan/jinjasql](jinjasql).
 
