@@ -1,0 +1,31 @@
+site_name: JinjaQ
+site_description: Jinja Query Templates for SQL
+site_author: Anton Ruhlov
+site_url: https://github.com/antonrh/jinjaq
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+repo_name: antonrh/jinjaq
+repo_url: https://github.com/antonrh/jinjaq
+edit_uri: ""
+
+nav:
+  - Introduction: index.md
+  - Usage: usage.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
