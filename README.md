@@ -16,7 +16,7 @@ http://jinjaq.readthedocs.io/
 
 ## Requirements
 
-Python 3.8+ and Jinja2 3.0+.
+`Python 3.8+` and `Jinja2 3.1.2+`.
 
 ## Installation
 
