@@ -14,4 +14,4 @@ fmt: ## Run code formatters
 	poetry run ruff check jinjaq/ tests/ --fix
 
 test:  ## Run unit tests
-	poetry run pytest -vv --cov=jinjaq/
+	poetry run pytest -vv tests/unit --cov=jinjaq/

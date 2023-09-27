@@ -36,7 +36,7 @@ jobs:
         run: poetry run mypy jinjaq/ tests/
 
   tests:
-    name: Run unit tests ${{ matrix.name }}
+    name: Run tests ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
