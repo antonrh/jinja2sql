@@ -59,10 +59,6 @@ class RenderContext:
             return tuple(self._params.values())
         return self._params
 
-    @property
-    def bind_params(self) -> Params:
-        return self.params
-
     def increment_param_index(self) -> None:
         """Increment the parameter index."""
         self._param_index += 1
