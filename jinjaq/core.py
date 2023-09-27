@@ -249,7 +249,7 @@ class JinjaQ:
             self._render_context_var.reset(token)
 
     def _render(
-        self, template: jinja2.Template, params: Params | None
+        self, template: jinja2.Template, params: t.Union[Params, None]
     ) -> RenderedQuery:
         """Render a template."""
         query = template.render(params or {})
@@ -259,7 +259,7 @@ class JinjaQ:
         )
 
     async def _render_async(
-        self, template: jinja2.Template, params: Params | None
+        self, template: jinja2.Template, params: t.Union[Params, None]
     ) -> RenderedQuery:
         """Render a template asynchronously."""
         query = await template.render_async(params or {})
