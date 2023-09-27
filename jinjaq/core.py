@@ -83,9 +83,7 @@ class RenderContext:
 class JinjaQ:
     def __init__(
         self,
-        searchpath: t.Union[
-            str, os.PathLike[str], t.Sequence[str], os.PathLike[str], None
-        ] = None,
+        searchpath: t.Union[str, "os.PathLike[str]", t.Sequence[str], None] = None,
         block_start_string: str = jinja2.defaults.BLOCK_START_STRING,
         block_end_string: str = jinja2.defaults.BLOCK_END_STRING,
         variable_start_string: str = jinja2.defaults.VARIABLE_START_STRING,
@@ -103,7 +101,7 @@ class JinjaQ:
         ] = jinja2.defaults.NEWLINE_SEQUENCE,
         keep_trailing_newline: bool = jinja2.defaults.KEEP_TRAILING_NEWLINE,
         optimized: bool = True,
-        finalize: t.Callable[..., t.Any] | None = None,
+        finalize: t.Union[t.Callable[..., t.Any], None] = None,
         cache_size: int = 400,
         auto_reload: bool = True,
         bytecode_cache: t.Union[jinja2.BytecodeCache, None] = None,
