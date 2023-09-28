@@ -11,10 +11,10 @@ def sql_path() -> pathlib.Path:
 
 
 @pytest.fixture(scope="session")
-def jinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+def j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
     return Jinja2SQL(searchpath=sql_path)
 
 
 @pytest.fixture(scope="session")
-def async_jjinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+def async_j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
     return Jinja2SQL(searchpath=sql_path, enable_async=True)

@@ -23,6 +23,7 @@ class SupportsLenAndGetItem(t.Protocol[_T_co]):
         ...
 
 
+Context = t.Mapping[str, t.Any]
 Params = t.Union[t.Mapping[str, t.Any], SupportsLenAndGetItem[t.Any]]
 ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
 
@@ -162,7 +163,7 @@ class Jinja2SQL:
         self,
         name: t.Union[str, jinja2.Template],
         *,
-        params: t.Union[Params, None] = None,
+        context: t.Union[Context, None] = None,
         param_style: t.Union[ParamStyle, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
@@ -172,13 +173,13 @@ class Jinja2SQL:
             identifier_quote_char=identifier_quote_char,
         ):
             template = self.env.get_template(name)
-            return self._render(template, params)
+            return self._render(template, context)
 
     def from_string(
         self,
         source: t.Union[str, jinja2.nodes.Template],
         *,
-        params: t.Union[Params, None] = None,
+        context: t.Union[Context, None] = None,
         param_style: t.Union[ParamStyle, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
@@ -188,13 +189,13 @@ class Jinja2SQL:
             identifier_quote_char=identifier_quote_char,
         ):
             template = self.env.from_string(source)
-            return self._render(template, params)
+            return self._render(template, context)
 
     async def from_file_async(
         self,
         name: t.Union[str, jinja2.Template],
         *,
-        params: t.Union[Params, None] = None,
+        context: t.Union[Context, None] = None,
         param_style: t.Union[ParamStyle, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
@@ -204,13 +205,13 @@ class Jinja2SQL:
             identifier_quote_char=identifier_quote_char,
         ):
             template = self.env.get_template(name)
-            return await self._render_async(template, params)
+            return await self._render_async(template, context)
 
     async def from_string_async(
         self,
         source: t.Union[str, jinja2.nodes.Template],
         *,
-        params: t.Union[Params, None] = None,
+        context: t.Union[Context, None] = None,
         param_style: t.Union[ParamStyle, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
@@ -220,7 +221,7 @@ class Jinja2SQL:
             identifier_quote_char=identifier_quote_char,
         ):
             template = self.env.from_string(source)
-            return await self._render_async(template, params)
+            return await self._render_async(template, context)
 
     @property
     def _render_context(self) -> RenderContext:
@@ -249,20 +250,20 @@ class Jinja2SQL:
             self._render_context_var.reset(token)
 
     def _render(
-        self, template: jinja2.Template, params: t.Union[Params, None]
+        self, template: jinja2.Template, context: t.Union[Context, None]
     ) -> RenderedQuery:
         """Render a template."""
-        query = template.render(params or {})
+        query = template.render(context or {})
         return RenderedQuery(
             query=query,
             params=self._render_context.params,
         )
 
     async def _render_async(
-        self, template: jinja2.Template, params: t.Union[Params, None]
+        self, template: jinja2.Template, context: t.Union[Context, None]
     ) -> RenderedQuery:
         """Render a template asynchronously."""
-        query = await template.render_async(params or {})
+        query = await template.render_async(context or {})
         return RenderedQuery(
             query=query,
             params=self._render_context.params,
