@@ -1,14 +1,14 @@
 [tool.poetry]
-name = "jinjaq"
+name = "jinja2sql"
 version = "0.1.0"
-description = "Jinja Query Templates for SQL"
+description = "Jinja Templates to SQL"
 authors = ["Anton Ruhlov <antonruhlov@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/antonrh/jinjaq"
+repository = "https://github.com/antonrh/jinja2sql"
 keywords = ["sql", "query", "queries", "template", "jinja", "database", "db"]
 packages = [
-    { include = "jinjaq", from = "." },
+    { include = "jinja2sql", from = "." },
 ]
 
 [tool.poetry.dependencies]

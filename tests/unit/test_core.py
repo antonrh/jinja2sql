@@ -2,7 +2,8 @@ import pathlib
 
 import pytest
 
-from jinjaq.core import JinjaQ, ParamStyle
+from jinja2sql import Jinja2SQL
+from jinja2sql.core import ParamStyle
 
 from tests.unit.equals import IsSQL
 
@@ -13,13 +14,13 @@ def sql_path() -> pathlib.Path:
 
 
 @pytest.fixture(scope="session")
-def jq(sql_path: pathlib.Path) -> JinjaQ:
-    return JinjaQ(searchpath=sql_path)
+def jinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+    return Jinja2SQL(searchpath=sql_path)
 
 
 @pytest.fixture(scope="session")
-def async_jq(sql_path: pathlib.Path) -> JinjaQ:
-    return JinjaQ(searchpath=sql_path, enable_async=True)
+def async_jinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+    return Jinja2SQL(searchpath=sql_path, enable_async=True)
 
 
 @pytest.mark.parametrize(
@@ -32,12 +33,12 @@ def async_jq(sql_path: pathlib.Path) -> JinjaQ:
     ],
 )
 def test_bind_params_with_positional_param_style(
-    jq: JinjaQ, param_style: ParamStyle, expected_query: str
+    jinja2sql: Jinja2SQL, param_style: ParamStyle, expected_query: str
 ) -> None:
     param1 = "value1"
     param2 = "value2"
 
-    query, params = jq.from_string(
+    query, params = jinja2sql.from_string(
         "SELECT * FROM table WHERE param1 = {{ param1 }} AND param2 = {{ param2 }}",
         params={"param1": param1, "param2": param2},
         param_style=param_style,
@@ -58,12 +59,12 @@ def test_bind_params_with_positional_param_style(
     ],
 )
 def test_bind_params_with_keyword_param_style(
-    jq: JinjaQ, param_style: ParamStyle, expected_query: str
+    jinja2sql: Jinja2SQL, param_style: ParamStyle, expected_query: str
 ) -> None:
     param1 = "value1"
     param2 = "value2"
 
-    query, params = jq.from_string(
+    query, params = jinja2sql.from_string(
         "SELECT * FROM table WHERE param1 = {{ param1 }} AND param2 = {{ param2 }}",
         params={"param1": param1, "param2": param2},
         param_style=param_style,
@@ -83,14 +84,14 @@ def test_bind_params_with_keyword_param_style(
     ],
 )
 def test_bind_inclause_params_with_positional_param_style(
-    jq: JinjaQ, param_style: ParamStyle, expected_query: str
+    jinja2sql: Jinja2SQL, param_style: ParamStyle, expected_query: str
 ) -> None:
     value1 = "value1"
     value2 = "value2"
 
     list_param = [value1, value2]
 
-    query, params = jq.from_string(
+    query, params = jinja2sql.from_string(
         "SELECT * FROM table WHERE param IN {{ list_param | inclause }}",
         params={"list_param": list_param},
         param_style=param_style,
@@ -111,14 +112,14 @@ def test_bind_inclause_params_with_positional_param_style(
     ],
 )
 def test_bind_inclause_params_with_keyword_param_style(
-    jq: JinjaQ, param_style: ParamStyle, expected_query: str
+    jinja2sql: Jinja2SQL, param_style: ParamStyle, expected_query: str
 ) -> None:
     value1 = "value1"
     value2 = "value2"
 
     list_param = [value1, value2]
 
-    query, params = jq.from_string(
+    query, params = jinja2sql.from_string(
         "SELECT * FROM table WHERE param IN {{ list_param | inclause }}",
         params={"list_param": list_param},
         param_style=param_style,
@@ -128,8 +129,8 @@ def test_bind_inclause_params_with_keyword_param_style(
     assert params == {"list_param_1": value1, "list_param_2": value2}
 
 
-def test_identifier(jq: JinjaQ) -> None:
-    query, params = jq.from_string(
+def test_identifier(jinja2sql: Jinja2SQL) -> None:
+    query, params = jinja2sql.from_string(
         "SELECT * FROM {{ table | identifier }}",
         params={"table": "user"},
         param_style="numeric",
@@ -139,8 +140,8 @@ def test_identifier(jq: JinjaQ) -> None:
     assert params == ()
 
 
-def test_safe_sql(jq: JinjaQ) -> None:
-    query, params = jq.from_string(
+def test_safe_sql(jinja2sql: Jinja2SQL) -> None:
+    query, params = jinja2sql.from_string(
         "SELECT * FROM table WHERE param = '{{ param | safe }}'",
         params={"param": "value"},
         param_style="numeric",
@@ -150,11 +151,11 @@ def test_safe_sql(jq: JinjaQ) -> None:
     assert params == ()
 
 
-def test_from_file(jq: JinjaQ) -> None:
+def test_from_file(jinja2sql: Jinja2SQL) -> None:
     param1 = "value1"
     param2 = "value2"
 
-    query, params = jq.from_file(
+    query, params = jinja2sql.from_file(
         "query1.sql",
         params={
             "param1": param1,
@@ -168,10 +169,10 @@ def test_from_file(jq: JinjaQ) -> None:
 
 
 @pytest.mark.asyncio
-async def test_from_string_async(async_jq: JinjaQ) -> None:
+async def test_from_string_async(async_jinja2sql: Jinja2SQL) -> None:
     param1 = "value1"
 
-    query, params = await async_jq.from_string_async(
+    query, params = await async_jinja2sql.from_string_async(
         "SELECT * FROM table WHERE param1 = {{ param1 }}",
         params={
             "param1": param1,
@@ -184,11 +185,11 @@ async def test_from_string_async(async_jq: JinjaQ) -> None:
 
 
 @pytest.mark.asyncio
-async def test_from_file_async(async_jq: JinjaQ) -> None:
+async def test_from_file_async(async_jinja2sql: Jinja2SQL) -> None:
     param1 = "value1"
     param2 = "value2"
 
-    query, params = await async_jq.from_file_async(
+    query, params = await async_jinja2sql.from_file_async(
         "query1.sql",
         params={
             "param1": param1,

@@ -1,7 +1,7 @@
-site_name: JinjaQ
+site_name: Jinja2SQL
 site_description: Jinja Query Templates for SQL
 site_author: Anton Ruhlov
-site_url: https://github.com/antonrh/jinjaq
+site_url: https://github.com/antonrh/jinja2sql
 
 theme:
   name: material
@@ -15,8 +15,8 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
-repo_name: antonrh/jinjaq
-repo_url: https://github.com/antonrh/jinjaq
+repo_name: antonrh/jinja2sql
+repo_url: https://github.com/antonrh/jinja2sql
 edit_uri: ""
 
 nav:
