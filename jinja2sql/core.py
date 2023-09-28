@@ -80,7 +80,7 @@ class RenderContext:
         return param_key, self._param_index
 
 
-class JinjaQ:
+class Jinja2SQL:
     def __init__(
         self,
         searchpath: t.Union[str, "os.PathLike[str]", t.Sequence[str], None] = None,
@@ -131,7 +131,7 @@ class JinjaQ:
             lstrip_blocks=lstrip_blocks,
             newline_sequence=newline_sequence,
             keep_trailing_newline=keep_trailing_newline,
-            extensions=(JinjaQExtension,),
+            extensions=(Jinja2SQLExtension,),
             optimized=optimized,
             finalize=finalize,
             autoescape=True,
@@ -330,8 +330,8 @@ class JinjaQ:
         return Markup(".".join(_quote_and_escape(item) for item in identifier))
 
 
-class JinjaQExtension(Extension):
-    """JinjaQ extension."""
+class Jinja2SQLExtension(Extension):
+    """Jinja2SQL extension."""
 
     skip_filters = ("bind", "_bind_in", "safe")
 

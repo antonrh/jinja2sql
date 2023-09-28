@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from jinjaq.core import JinjaQ
+from jinja2sql.core import Jinja2SQL
 
 
 @pytest.fixture(scope="session")
@@ -11,10 +11,10 @@ def sql_path() -> pathlib.Path:
 
 
 @pytest.fixture(scope="session")
-def jq(sql_path: pathlib.Path) -> JinjaQ:
-    return JinjaQ(searchpath=sql_path)
+def jinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+    return Jinja2SQL(searchpath=sql_path)
 
 
 @pytest.fixture(scope="session")
-def async_jq(sql_path: pathlib.Path) -> JinjaQ:
-    return JinjaQ(searchpath=sql_path, enable_async=True)
+def async_jjinja2sql(sql_path: pathlib.Path) -> Jinja2SQL:
+    return Jinja2SQL(searchpath=sql_path, enable_async=True)
