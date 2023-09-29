@@ -45,7 +45,7 @@ query, params = j2sql.from_string(
     context={"table": "users", "email": "user@mail.com"},
 )
 
+# using with your favorite database driver connection
 
-assert query == "SELECT * FROM users WHERE email = :email"
-assert params == {"email": "user@mail.com"}
+conn.execute(query, params)
 ```
