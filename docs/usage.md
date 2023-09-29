@@ -70,14 +70,14 @@ query, params = j2sql.from_string(
 )
 ```
 
-| param_style | Example   |
-| ----------- | --------- |
-| named       | :param    |
-| qmark       | ?         |
-| numeric     | :1        |
-| format      | %s        |
-| pyformat    | %(param)s |
-| asyncpg     | $1        |
+| param_style   | Example     |
+| ------------- | ----------- |
+| `named`       | `:param`    |
+| `qmark`       | `?`         |
+| `numeric`     | `:1`        |
+| `format`      | `%s`        |
+| `pyformat`    | `%(param)s` |
+| `asyncpg`     | `$1`        |
 
 
 or you can provide a custom function to format your database specific param style:
