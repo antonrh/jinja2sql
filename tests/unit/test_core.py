@@ -129,6 +129,19 @@ def test_bind_inclause_params_with_keyword_param_style(
     assert params == {"list_param_1": value1, "list_param_2": value2}
 
 
+def test_custom_param_style(j2sql: Jinja2SQL) -> None:
+    param1 = "value1"
+
+    query, params = j2sql.from_string(
+        "SELECT * FROM table WHERE param1 = {{ param1 }}",
+        param_style=lambda key, index: f"{{{key}}}",
+        context={"param1": param1},
+    )
+
+    assert query == IsSQL("SELECT * FROM table WHERE param1 = {param1}")
+    assert params == {"param1": param1}
+
+
 def test_identifier(j2sql: Jinja2SQL) -> None:
     query, params = j2sql.from_string(
         "SELECT * FROM {{ table | identifier }}",

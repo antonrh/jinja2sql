@@ -38,7 +38,7 @@ poetry add jinja2sql
 from jinja2sql import Jinja2SQL
 
 
-j2sql = Jinja2SQL(param_style="named")
+j2sql = Jinja2SQL(param_style="named")  # default param style is "named"
 
 query, params = j2sql.from_string(
     "SELECT * FROM {{ table | identifier }} WHERE email = {{ email }}",
@@ -48,4 +48,51 @@ query, params = j2sql.from_string(
 
 assert query == "SELECT * FROM users WHERE email = :email"
 assert params == {"email": "user@mail.com"}
+```
+
+### Param styles
+
+`Jinja2SQL` supports different param styles depending on the database driver you are using.
+
+You can choose between the following supported param styles:
+
+```python
+from jinja2sql import Jinja2SQL
+
+
+j2sql = Jinja2SQL(param_style="named")  # default
+
+query, params = j2sql.from_string(
+    "SELECT * FROM table WHERE param = {{ param }}",
+    context={"param": ...},
+    param_style="named",  # or "qmark", "numeric", "format", "pyformat", "asyncpg"
+)
+```
+
+| param_style | Example   |
+| ----------- | --------- |
+| named       | :param    |
+| qmark       | ?         |
+| numeric     | :1        |
+| format      | %s        |
+| pyformat    | %(param)s |
+| asyncpg     | $1        |
+
+
+or you can provide a custom function to format your database specific param style:
+
+
+```python
+from jinja2sql import Jinja2SQL
+
+
+j2sql = Jinja2SQL()
+
+query, params = j2sql.from_string(
+    "SELECT * FROM table WHERE column = {{ param }}",
+    context={"param": ...},
+    param_style=lambda key, _: f"{{{key}}}",
+)
+
+assert query == "SELECT * FROM table WHERE column = {email}"
 ```
