@@ -23,6 +23,11 @@ class SupportsLenAndGetItem(t.Protocol[_T_co]):
         ...
 
 
+class ParamStyleFunc(t.Protocol):
+    def __call__(self, param_key: str, param_index: int) -> str:
+        ...
+
+
 Context = t.Mapping[str, t.Any]
 Params = t.Union[t.Mapping[str, t.Any], SupportsLenAndGetItem[t.Any]]
 ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
@@ -46,7 +51,11 @@ class RenderContext:
         "_param_indexes",
     )
 
-    def __init__(self, param_style: ParamStyle, identifier_quote_char: str):
+    def __init__(
+        self,
+        param_style: t.Union[ParamStyle, ParamStyleFunc],
+        identifier_quote_char: str,
+    ) -> None:
         self._params: t.Dict[str, t.Any] = {}
         self._param_index: int = 0
         self._param_indexes: t.Dict[str, int] = defaultdict(lambda: 0)
@@ -164,7 +173,7 @@ class Jinja2SQL:
         name: t.Union[str, jinja2.Template],
         *,
         context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, None] = None,
+        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a file."""
@@ -180,7 +189,7 @@ class Jinja2SQL:
         source: t.Union[str, jinja2.nodes.Template],
         *,
         context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, None] = None,
+        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a string."""
@@ -196,7 +205,7 @@ class Jinja2SQL:
         name: t.Union[str, jinja2.Template],
         *,
         context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, None] = None,
+        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a file asynchronously."""
@@ -212,7 +221,7 @@ class Jinja2SQL:
         source: t.Union[str, jinja2.nodes.Template],
         *,
         context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, None] = None,
+        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a string asynchronously."""
@@ -233,7 +242,7 @@ class Jinja2SQL:
     @contextlib.contextmanager
     def _begin_render_context(
         self,
-        param_style: t.Union[ParamStyle, None] = None,
+        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
         identifier_quote_char: t.Union[str, None] = None,
     ) -> t.Iterator[None]:
         """Begin a render context."""
@@ -274,16 +283,18 @@ class Jinja2SQL:
         param_key, param_index = self._render_context.bind_param(
             key, value, is_in_clause=is_in_clause
         )
-        if (param_style := self._render_context.param_style) == "named":
+        if callable(param_style := self._render_context.param_style):
+            return param_style(param_key, param_index)
+        elif param_style == "named":
             return f":{param_key}"
         elif param_style == "qmark":
             return "?"
         elif param_style == "format":
             return "%s"
         elif param_style == "numeric":
-            return ":%s" % param_index
+            return f":{param_index}"
         elif param_style == "pyformat":
-            return "%%(%s)s" % param_key
+            return f"%({param_key})s"
         elif param_style == "asyncpg":
             return f"${param_index}"
         raise ValueError(f"Invalid param_style - {param_style}")
