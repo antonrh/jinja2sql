@@ -50,7 +50,7 @@ assert query == "SELECT * FROM users WHERE email = :email"
 assert params == {"email": "user@mail.com"}
 ```
 
-### Param styles
+### Param Styles
 
 `Jinja2SQL` supports different param styles depending on the database driver you are using.
 
