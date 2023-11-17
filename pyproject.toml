@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jinja2sql"
-version = "0.2.0"
+version = "0.3.0"
 description = "Jinja Templates to SQL"
 authors = ["Anton Ruhlov <antonruhlov@gmail.com>"]
 license = "MIT"
