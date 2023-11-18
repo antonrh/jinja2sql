@@ -35,6 +35,7 @@ python = "^3.8"
 mkdocs = { version = "^1.4.2", optional = true }
 mkdocs-material = { version = "^9.1.13", optional = true }
 jinja2 = "^3.1.2"
+sqlalchemy = "^2.0.23"
 
 [tool.poetry.extras]
 docs = ["mkdocs", "mkdocs-material"]

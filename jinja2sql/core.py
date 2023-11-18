@@ -93,7 +93,9 @@ class RenderContext:
 class Jinja2SQL:
     def __init__(
         self,
-        searchpath: t.Union[str, "os.PathLike[str]", t.Sequence[str], None] = None,
+        searchpath: t.Union[
+            str, os.PathLike[str], t.Sequence[t.Union[str, os.PathLike[str]]], None
+        ] = None,
         block_start_string: str = jinja2.defaults.BLOCK_START_STRING,
         block_end_string: str = jinja2.defaults.BLOCK_END_STRING,
         variable_start_string: str = jinja2.defaults.VARIABLE_START_STRING,
