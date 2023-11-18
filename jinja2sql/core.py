@@ -28,9 +28,31 @@ class ParamStyleFunc(t.Protocol):
         ...
 
 
-Context = t.Mapping[str, t.Any]
-Params = t.Union[t.Mapping[str, t.Any], SupportsLenAndGetItem[t.Any]]
 ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
+
+
+class Params(t.Mapping[str, t.Any]):
+    def __init__(self, params: t.Union[t.Dict[str, t.Any], None] = None) -> None:
+        self._params = params or {}
+
+    def __getitem__(self, key: t.Any) -> t.Any:
+        if isinstance(key, int):
+            return list(self._params.values())[key]
+        return self._params[key]
+
+    def __iter__(self) -> t.Iterator[str]:
+        return iter(self._params)
+
+    def __len__(self) -> int:
+        return len(self._params)
+
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, tuple):
+            return tuple(self._params.values()) == other
+        return super().__eq__(other)
+
+
+Context = t.Mapping[str, t.Any]
 
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
@@ -65,9 +87,7 @@ class RenderContext:
     @property
     def params(self) -> Params:
         """Get the parameters."""
-        if self.param_style in ("qmark", "format", "numeric", "asyncpg"):
-            return tuple(self._params.values())
-        return self._params
+        return Params(self._params)
 
     def increment_param_index(self) -> None:
         """Increment the parameter index."""
@@ -93,7 +113,9 @@ class RenderContext:
 class Jinja2SQL:
     def __init__(
         self,
-        searchpath: t.Union[str, "os.PathLike[str]", t.Sequence[str], None] = None,
+        searchpath: t.Union[
+            str, os.PathLike[str], t.Sequence[t.Union[str, os.PathLike[str]]], None
+        ] = None,
         block_start_string: str = jinja2.defaults.BLOCK_START_STRING,
         block_end_string: str = jinja2.defaults.BLOCK_END_STRING,
         variable_start_string: str = jinja2.defaults.VARIABLE_START_STRING,
