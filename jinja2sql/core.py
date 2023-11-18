@@ -81,8 +81,6 @@ class RenderContext:
     @property
     def params(self) -> Params:
         """Get the parameters."""
-        # if self.param_style in ("qmark", "format", "numeric", "asyncpg"):
-        #     return tuple(self._params.values())
         return Params(self._params)
 
     def increment_param_index(self) -> None:
