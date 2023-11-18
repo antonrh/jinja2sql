@@ -28,9 +28,25 @@ class ParamStyleFunc(t.Protocol):
         ...
 
 
-Context = t.Mapping[str, t.Any]
-Params = t.Union[t.Mapping[str, t.Any], SupportsLenAndGetItem[t.Any]]
+class Params(t.Mapping[str, t.Any]):
+    def __init__(self, params: t.Union[t.Dict[str, t.Any], None] = None) -> None:
+        self._params = params or {}
+
+    def __getitem__(self, key: str) -> t.Any:
+        return self._params[key]
+
+    def __iter__(self) -> t.Iterator[str]:
+        return iter(self._params)
+
+    def __len__(self) -> int:
+        return len(self._params)
+
+    def as_tuple(self) -> t.Tuple[t.Any, ...]:
+        return tuple(self.values())
+
+
 ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
+Context = t.Mapping[str, t.Any]
 
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
@@ -65,9 +81,9 @@ class RenderContext:
     @property
     def params(self) -> Params:
         """Get the parameters."""
-        if self.param_style in ("qmark", "format", "numeric", "asyncpg"):
-            return tuple(self._params.values())
-        return self._params
+        # if self.param_style in ("qmark", "format", "numeric", "asyncpg"):
+        #     return tuple(self._params.values())
+        return Params(self._params)
 
     def increment_param_index(self) -> None:
         """Increment the parameter index."""
