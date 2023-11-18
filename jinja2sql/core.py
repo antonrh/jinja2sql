@@ -28,11 +28,16 @@ class ParamStyleFunc(t.Protocol):
         ...
 
 
+ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
+
+
 class Params(t.Mapping[str, t.Any]):
     def __init__(self, params: t.Union[t.Dict[str, t.Any], None] = None) -> None:
         self._params = params or {}
 
-    def __getitem__(self, key: str) -> t.Any:
+    def __getitem__(self, key: str | int) -> t.Any:
+        if isinstance(key, int):
+            return list(self._params.values())[key]
         return self._params[key]
 
     def __iter__(self) -> t.Iterator[str]:
@@ -41,11 +46,12 @@ class Params(t.Mapping[str, t.Any]):
     def __len__(self) -> int:
         return len(self._params)
 
-    def as_tuple(self) -> t.Tuple[t.Any, ...]:
-        return tuple(self.values())
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, tuple):
+            return tuple(self._params.values()) == other
+        return super().__eq__(other)
 
 
-ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
 Context = t.Mapping[str, t.Any]
 
 

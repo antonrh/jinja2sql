@@ -45,7 +45,7 @@ def test_bind_params_with_positional_param_style(
     )
 
     assert query == IsSQL(expected_query)
-    assert params.as_tuple() == (param1, param2)
+    assert params == (param1, param2)
 
 
 @pytest.mark.parametrize(
@@ -98,7 +98,7 @@ def test_bind_inclause_params_with_positional_param_style(
     )
 
     assert query == IsSQL(expected_query)
-    assert params.as_tuple() == (value1, value2)
+    assert params == (value1, value2)
 
 
 @pytest.mark.parametrize(
@@ -150,7 +150,7 @@ def test_identifier(j2sql: Jinja2SQL) -> None:
     )
 
     assert query == IsSQL("SELECT * FROM user")
-    assert params.as_tuple() == ()
+    assert params == ()
 
 
 def test_safe_sql(j2sql: Jinja2SQL) -> None:
@@ -161,7 +161,7 @@ def test_safe_sql(j2sql: Jinja2SQL) -> None:
     )
 
     assert query == IsSQL("SELECT * FROM table WHERE param = 'value'")
-    assert params.as_tuple() == ()
+    assert params == ()
 
 
 def test_from_file(j2sql: Jinja2SQL) -> None:
@@ -178,7 +178,7 @@ def test_from_file(j2sql: Jinja2SQL) -> None:
     )
 
     assert query == IsSQL("SELECT * FROM table WHERE param1 = :1 AND param2 = :2")
-    assert params.as_tuple() == (param1, param2)
+    assert params == (param1, param2)
 
 
 @pytest.mark.asyncio
@@ -194,7 +194,7 @@ async def test_from_string_async(async_j2sql: Jinja2SQL) -> None:
     )
 
     assert query == IsSQL("SELECT * FROM table WHERE param1 = :1")
-    assert params.as_tuple() == (param1,)
+    assert params == (param1,)
 
 
 @pytest.mark.asyncio
@@ -212,4 +212,4 @@ async def test_from_file_async(async_j2sql: Jinja2SQL) -> None:
     )
 
     assert query == IsSQL("SELECT * FROM table WHERE param1 = :1 AND param2 = :2")
-    assert params.as_tuple() == (param1, param2)
+    assert params == (param1, param2)
