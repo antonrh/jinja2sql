@@ -35,7 +35,7 @@ class Params(t.Mapping[str, t.Any]):
     def __init__(self, params: t.Union[t.Dict[str, t.Any], None] = None) -> None:
         self._params = params or {}
 
-    def __getitem__(self, key: str | int) -> t.Any:
+    def __getitem__(self, key: t.Any) -> t.Any:
         if isinstance(key, int):
             return list(self._params.values())[key]
         return self._params[key]
