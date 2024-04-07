@@ -16,16 +16,13 @@ _T_co = t.TypeVar("_T_co", covariant=True)
 
 
 class SupportsLenAndGetItem(t.Protocol[_T_co]):
-    def __len__(self) -> int:
-        ...
+    def __len__(self) -> int: ...
 
-    def __getitem__(self, __k: int) -> t.Any:
-        ...
+    def __getitem__(self, __k: int) -> t.Any: ...
 
 
 class ParamStyleFunc(t.Protocol):
-    def __call__(self, param_key: str, param_index: int) -> str:
-        ...
+    def __call__(self, param_key: str, param_index: int) -> str: ...
 
 
 Context = t.Mapping[str, t.Any]
