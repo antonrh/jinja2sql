@@ -14,4 +14,4 @@ fmt: ## Run code formatters
 	poetry run ruff format jinja2sql tests
 
 test:  ## Run unit tests
-	poetry run pytest -vv tests/unit --cov=jinja2sql
+	poetry run pytest -vv tests --cov=jinja2sql
