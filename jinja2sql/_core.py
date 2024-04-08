@@ -1,62 +1,76 @@
 import contextlib
 import os
-import typing as t
 from collections import defaultdict
 from contextvars import ContextVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import jinja2
 import jinja2.nodes
-import typing_extensions as te
 from jinja2.ext import Extension
 from jinja2.lexer import Token, TokenStream
 from jinja2.parser import Parser
 from markupsafe import Markup
+from typing_extensions import Literal
 
-_T_co = t.TypeVar("_T_co", covariant=True)
+_T_co = TypeVar("_T_co", covariant=True)
 
 
-class SupportsLenAndGetItem(t.Protocol[_T_co]):
+class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
 
-    def __getitem__(self, __k: int) -> t.Any: ...
+    def __getitem__(self, __k: int) -> Any: ...
 
 
-class ParamStyleFunc(t.Protocol):
+class ParamStyleFunc(Protocol):
     def __call__(self, param_key: str, param_index: int) -> str: ...
 
 
-ParamStyle = te.Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
+ParamStyle = Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
 
 
-class Params(t.Mapping[str, t.Any]):
-    def __init__(self, params: t.Union[t.Dict[str, t.Any], None] = None) -> None:
+class Params(Mapping[str, Any]):
+    def __init__(self, params: Union[Dict[str, Any], None] = None) -> None:
         self._params = params or {}
 
-    def __getitem__(self, key: t.Any) -> t.Any:
+    def __getitem__(self, key: Any) -> Any:
         if isinstance(key, int):
             return list(self._params.values())[key]
         return self._params[key]
 
-    def __iter__(self) -> t.Iterator[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._params)
 
     def __len__(self) -> int:
         return len(self._params)
 
-    def __eq__(self, other: t.Any) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, tuple):
             return tuple(self._params.values()) == other
         return super().__eq__(other)
 
 
-Context = t.Mapping[str, t.Any]
+Context = Mapping[str, Any]
 
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 DEFAULT_PARAM_STYLE: ParamStyle = "named"
 
 
-class RenderedQuery(t.NamedTuple):
+class RenderedQuery(NamedTuple):
     query: str
     params: Params
 
@@ -72,12 +86,12 @@ class RenderContext:
 
     def __init__(
         self,
-        param_style: t.Union[ParamStyle, ParamStyleFunc],
+        param_style: Union[ParamStyle, ParamStyleFunc],
         identifier_quote_char: str,
     ) -> None:
-        self._params: t.Dict[str, t.Any] = {}
+        self._params: Dict[str, Any] = {}
         self._param_index: int = 0
-        self._param_indexes: t.Dict[str, int] = defaultdict(lambda: 0)
+        self._param_indexes: Dict[str, int] = defaultdict(lambda: 0)
         self.param_style = param_style
         self.identifier_quote_char = identifier_quote_char
 
@@ -91,8 +105,8 @@ class RenderContext:
         self._param_index += 1
 
     def bind_param(
-        self, name: str, value: t.Any, is_in_clause: bool = False
-    ) -> t.Tuple[str, int]:
+        self, name: str, value: Any, is_in_clause: bool = False
+    ) -> Tuple[str, int]:
         """Bind a parameter."""
         if jinja2.is_undefined(value):
             raise jinja2.UndefinedError(f"Undefined parameter '{name}' used in query.")
@@ -110,8 +124,8 @@ class RenderContext:
 class Jinja2SQL:
     def __init__(
         self,
-        searchpath: t.Union[
-            str, os.PathLike[str], t.Sequence[t.Union[str, os.PathLike[str]]], None
+        searchpath: Union[
+            str, os.PathLike[str], Sequence[Union[str, os.PathLike[str]]], None
         ] = None,
         block_start_string: str = jinja2.defaults.BLOCK_START_STRING,
         block_end_string: str = jinja2.defaults.BLOCK_END_STRING,
@@ -119,27 +133,25 @@ class Jinja2SQL:
         variable_end_string: str = jinja2.defaults.VARIABLE_END_STRING,
         comment_start_string: str = jinja2.defaults.COMMENT_START_STRING,
         comment_end_string: str = jinja2.defaults.COMMENT_END_STRING,
-        line_statement_prefix: t.Union[
-            str, None
-        ] = jinja2.defaults.LINE_STATEMENT_PREFIX,
-        line_comment_prefix: t.Union[str, None] = jinja2.defaults.LINE_COMMENT_PREFIX,
+        line_statement_prefix: Union[str, None] = jinja2.defaults.LINE_STATEMENT_PREFIX,
+        line_comment_prefix: Union[str, None] = jinja2.defaults.LINE_COMMENT_PREFIX,
         trim_blocks: bool = jinja2.defaults.TRIM_BLOCKS,
         lstrip_blocks: bool = jinja2.defaults.LSTRIP_BLOCKS,
-        newline_sequence: te.Literal[
+        newline_sequence: Literal[
             "\n", "\r\n", "\r"
         ] = jinja2.defaults.NEWLINE_SEQUENCE,
         keep_trailing_newline: bool = jinja2.defaults.KEEP_TRAILING_NEWLINE,
         optimized: bool = True,
-        finalize: t.Union[t.Callable[..., t.Any], None] = None,
+        finalize: Union[Callable[..., Any], None] = None,
         cache_size: int = 400,
         auto_reload: bool = True,
-        bytecode_cache: t.Union[jinja2.BytecodeCache, None] = None,
+        bytecode_cache: Union[jinja2.BytecodeCache, None] = None,
         enable_async: bool = False,
         param_style: ParamStyle = DEFAULT_PARAM_STYLE,
         identifier_quote_char: str = DEFAULT_IDENTIFIER_QUOTE_CHAR,
     ):
         # Set the Jinja loader
-        loader: t.Union[jinja2.FileSystemLoader, None] = None
+        loader: Union[jinja2.FileSystemLoader, None] = None
         if searchpath:
             loader = jinja2.FileSystemLoader(searchpath=searchpath)
 
@@ -178,7 +190,7 @@ class Jinja2SQL:
         self._env.filters["identifier"] = self._identifier_filter
 
         # Set the context variable
-        self._render_context_var: ContextVar[t.Union[RenderContext, None]] = ContextVar(
+        self._render_context_var: ContextVar[Union[RenderContext, None]] = ContextVar(
             "render_context", default=None
         )
 
@@ -189,11 +201,11 @@ class Jinja2SQL:
 
     def from_file(
         self,
-        name: t.Union[str, jinja2.Template],
+        name: Union[str, jinja2.Template],
         *,
-        context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
-        identifier_quote_char: t.Union[str, None] = None,
+        context: Union[Context, None] = None,
+        param_style: Union[ParamStyle, ParamStyleFunc, None] = None,
+        identifier_quote_char: Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a file."""
         with self._begin_render_context(
@@ -205,11 +217,11 @@ class Jinja2SQL:
 
     def from_string(
         self,
-        source: t.Union[str, jinja2.nodes.Template],
+        source: Union[str, jinja2.nodes.Template],
         *,
-        context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
-        identifier_quote_char: t.Union[str, None] = None,
+        context: Union[Context, None] = None,
+        param_style: Union[ParamStyle, ParamStyleFunc, None] = None,
+        identifier_quote_char: Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a string."""
         with self._begin_render_context(
@@ -221,11 +233,11 @@ class Jinja2SQL:
 
     async def from_file_async(
         self,
-        name: t.Union[str, jinja2.Template],
+        name: Union[str, jinja2.Template],
         *,
-        context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
-        identifier_quote_char: t.Union[str, None] = None,
+        context: Union[Context, None] = None,
+        param_style: Union[ParamStyle, ParamStyleFunc, None] = None,
+        identifier_quote_char: Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a file asynchronously."""
         with self._begin_render_context(
@@ -237,11 +249,11 @@ class Jinja2SQL:
 
     async def from_string_async(
         self,
-        source: t.Union[str, jinja2.nodes.Template],
+        source: Union[str, jinja2.nodes.Template],
         *,
-        context: t.Union[Context, None] = None,
-        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
-        identifier_quote_char: t.Union[str, None] = None,
+        context: Union[Context, None] = None,
+        param_style: Union[ParamStyle, ParamStyleFunc, None] = None,
+        identifier_quote_char: Union[str, None] = None,
     ) -> RenderedQuery:
         """Load a template from a string asynchronously."""
         with self._begin_render_context(
@@ -261,9 +273,9 @@ class Jinja2SQL:
     @contextlib.contextmanager
     def _begin_render_context(
         self,
-        param_style: t.Union[ParamStyle, ParamStyleFunc, None] = None,
-        identifier_quote_char: t.Union[str, None] = None,
-    ) -> t.Iterator[None]:
+        param_style: Union[ParamStyle, ParamStyleFunc, None] = None,
+        identifier_quote_char: Union[str, None] = None,
+    ) -> Iterator[None]:
         """Begin a render context."""
         token = self._render_context_var.set(
             RenderContext(
@@ -278,7 +290,7 @@ class Jinja2SQL:
             self._render_context_var.reset(token)
 
     def _render(
-        self, template: jinja2.Template, context: t.Union[Context, None]
+        self, template: jinja2.Template, context: Union[Context, None]
     ) -> RenderedQuery:
         """Render a template."""
         query = template.render(context or {})
@@ -288,7 +300,7 @@ class Jinja2SQL:
         )
 
     async def _render_async(
-        self, template: jinja2.Template, context: t.Union[Context, None]
+        self, template: jinja2.Template, context: Union[Context, None]
     ) -> RenderedQuery:
         """Render a template asynchronously."""
         query = await template.render_async(context or {})
@@ -297,7 +309,7 @@ class Jinja2SQL:
             params=self._render_context.params,
         )
 
-    def _bind_param(self, key: str, value: t.Any, is_in_clause: bool = False) -> str:
+    def _bind_param(self, key: str, value: Any, is_in_clause: bool = False) -> str:
         """Bind a parameter."""
         param_key, param_index = self._render_context.bind_param(
             key, value, is_in_clause=is_in_clause
@@ -320,13 +332,13 @@ class Jinja2SQL:
 
     # Default filters
 
-    def _bind_filter(self, value: t.Any, name: str) -> t.Union[Markup, str]:
+    def _bind_filter(self, value: Any, name: str) -> Union[Markup, str]:
         """Bind a parameter."""
         if isinstance(value, Markup):
             return value
         return self._bind_param(name, value)
 
-    def _bind_in_clause_filter(self, value: t.Any, name: str) -> str:
+    def _bind_in_clause_filter(self, value: Any, name: str) -> str:
         """Bind an IN clause."""
         values = list(value)
         results = []
@@ -334,16 +346,16 @@ class Jinja2SQL:
             results.append(self._bind_param(name, item, is_in_clause=True))
         return f"({', '.join(results)})"
 
-    def _in_clause_noop_filter(self, value: t.Any) -> t.Any:
+    def _in_clause_noop_filter(self, value: Any) -> Any:
         return value
 
-    def _identifier_filter(self, value: t.Any) -> Markup:
+    def _identifier_filter(self, value: Any) -> Markup:
         """Format an identifier."""
         if isinstance(value, str):
             identifier = (value,)
         else:
             identifier = value
-        if not isinstance(value, t.Iterable):
+        if not isinstance(value, Iterable):
             raise ValueError("identifier filter expects a string or an Iterable")
 
         def _quote_and_escape(item: str) -> str:
@@ -368,11 +380,11 @@ class Jinja2SQLExtension(Extension):
 
     def parse(
         self, parser: Parser
-    ) -> t.Union[jinja2.nodes.Node, t.List[jinja2.nodes.Node]]:
+    ) -> Union[jinja2.nodes.Node, List[jinja2.nodes.Node]]:
         """Parse the template."""
         return []
 
-    def filter_stream(self, stream: TokenStream) -> t.Iterable[Token]:
+    def filter_stream(self, stream: TokenStream) -> Iterable[Token]:
         """Filter the stream."""
         while not stream.eos:
             token = next(stream)
@@ -410,7 +422,7 @@ class Jinja2SQLExtension(Extension):
                 yield token
 
     @staticmethod
-    def _extract_param_name(tokens: t.List[Token]) -> str:
+    def _extract_param_name(tokens: List[Token]) -> str:
         """Extract the parameter name."""
         name = ""
         for token in tokens:

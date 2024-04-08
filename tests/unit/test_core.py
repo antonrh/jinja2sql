@@ -3,7 +3,7 @@ import pathlib
 import pytest
 
 from jinja2sql import Jinja2SQL
-from jinja2sql.core import ParamStyle
+from jinja2sql._core import ParamStyle
 
 from tests.unit.equals import IsSQL
 

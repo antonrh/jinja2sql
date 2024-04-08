@@ -4,7 +4,7 @@ from typing import Iterator
 import pytest
 
 from jinja2sql import Jinja2SQL
-from jinja2sql.core import ParamStyle
+from jinja2sql._core import ParamStyle
 
 
 @pytest.fixture(scope="module")
