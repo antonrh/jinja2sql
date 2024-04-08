@@ -125,7 +125,7 @@ class Jinja2SQL:
     def __init__(
         self,
         searchpath: Union[
-            str, os.PathLike[str], Sequence[Union[str, os.PathLike[str]]], None
+            str, "os.PathLike[str]", Sequence[Union[str, "os.PathLike[str]"]], None
         ] = None,
         block_start_string: str = jinja2.defaults.BLOCK_START_STRING,
         block_end_string: str = jinja2.defaults.BLOCK_END_STRING,
