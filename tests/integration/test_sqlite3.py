@@ -4,10 +4,10 @@ from typing import Iterator
 import pytest
 
 from jinja2sql import Jinja2SQL
-from jinja2sql.core import ParamStyle
+from jinja2sql._core import ParamStyle
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def conn(j2sql: Jinja2SQL) -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(":memory:")
 

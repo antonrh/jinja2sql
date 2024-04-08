@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from jinja2sql.core import Jinja2SQL
+from jinja2sql._core import Jinja2SQL
 
 
 @pytest.fixture(scope="session")
