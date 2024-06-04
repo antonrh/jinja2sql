@@ -7,7 +7,7 @@
 To generate SQL queries from string templates, use the `from_string` method:
 
 ```python
-    
+
 ```python
 from jinja2sql import Jinja2SQL
 
@@ -167,4 +167,29 @@ async def main() -> None:
 
 
 asyncio.run(main())
+```
+
+## Customer filters
+
+`Jinja2SQL` supports custom filters to extend the functionality of the Jinja2 templating engine.
+
+To add custom filters, use the `register_filter` method or `@filter` decorator:
+
+```python
+from jinja2sql import Jinja2SQL
+
+j2sql = Jinja2SQL()
+
+
+@j2sql.filter(name="array")   # or j2sql.register_filter("array", array_filter)
+def array_filter(self: Jinja2SQL, value: list[str]) -> str:
+    return self.identifier(", ".join(f"'{item}'" for item in value))
+
+
+query, params = j2sql.from_string(
+    """SELECT ARRAY[{{ param | array2 }}] AS array""",
+    context={
+        "param": ["0", "1"],
+    },
+)
 ```
