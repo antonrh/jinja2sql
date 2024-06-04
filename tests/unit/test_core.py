@@ -1,4 +1,5 @@
 import pathlib
+from typing import List
 
 import pytest
 
@@ -230,7 +231,7 @@ def test_register_filter(j2sql: Jinja2SQL) -> None:
 
 
 def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
-    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+    def array_filter(j2sql: Jinja2SQL, value: List[str]) -> str:
         return j2sql.identifier(", ".join(f"'{item}'" for item in value))
 
     j2sql.register_filter("array", array_filter)
@@ -264,7 +265,7 @@ def test_filter_decorator(j2sql: Jinja2SQL) -> None:
 
 def test_filter_decorator_with_self(j2sql: Jinja2SQL) -> None:
     @j2sql.filter(name="array2")
-    def array_filter(self: Jinja2SQL, value: list[str]) -> str:
+    def array_filter(self: Jinja2SQL, value: List[str]) -> str:
         return self.identifier(", ".join(f"'{item}'" for item in value))
 
     query, params = j2sql.from_string(
