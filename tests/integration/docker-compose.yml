@@ -1,0 +1,12 @@
+services:
+
+  psycopg:
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "jinja2sql"
+      POSTGRES_PASSWORD: "jinja2sql"
+      POSTGRES_DB: "jinja2sql"
+    command: "-p 5432"

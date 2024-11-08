@@ -6,6 +6,12 @@ from jinja2sql._core import Jinja2SQL
 
 
 @pytest.fixture(scope="session")
+def docker_compose_file(pytestconfig: pytest.Config) -> list[pathlib.Path]:
+    base_dir = pytestconfig.rootpath / "tests/integration"
+    return [base_dir / "docker-compose.yml"]
+
+
+@pytest.fixture(scope="session")
 def sql_path() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parent / "sql"
 

@@ -14,7 +14,9 @@ from typing import (
     NamedTuple,
     Protocol,
     Sequence,
+    TypeAlias,
     TypeVar,
+    Union,
     overload,
 )
 
@@ -43,34 +45,8 @@ class ParamStyleFunc(Protocol):
 
 
 ParamStyle = Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
-
-
-class Params(Mapping[str, Any]):
-    def __init__(self, params: dict[str, Any] | None = None) -> None:
-        self._params = params or {}
-
-    def __getitem__(self, key: Any) -> Any:
-        if isinstance(key, int):
-            return list(self._params.values())[key]
-        return self._params[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._params)
-
-    def __len__(self) -> int:
-        return len(self._params)
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, tuple):
-            return tuple(self._params.values()) == other
-        return super().__eq__(other)
-
-    def __repr__(self) -> str:
-        return repr(self._params)
-
-
-Context = Mapping[str, Any]
-
+Params: TypeAlias = Union[Mapping[str, Any], Sequence[Any]]
+Context: TypeAlias = Mapping[str, Any]
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 DEFAULT_PARAM_STYLE: ParamStyle = "named"
@@ -95,7 +71,9 @@ class RenderContext:
         param_style: ParamStyle | ParamStyleFunc,
         identifier_quote_char: str,
     ) -> None:
-        self._params: dict[str, Any] = {}
+        self._params: list[Any] | dict[str, Any] = {}
+        if _is_positional_param_style(param_style):
+            self._params = []
         self._param_index: int = 0
         self._param_indexes: dict[str, int] = defaultdict(lambda: 0)
         self.param_style = param_style
@@ -104,7 +82,7 @@ class RenderContext:
     @property
     def params(self) -> Params:
         """Get the parameters."""
-        return Params(self._params)
+        return self._params
 
     def increment_param_index(self) -> None:
         """Increment the parameter index."""
@@ -123,7 +101,10 @@ class RenderContext:
         else:
             param_key_suffix = ""
         param_key = f"{name.replace('.', '__')}{param_key_suffix}"
-        self._params[param_key] = value
+        if isinstance(self._params, dict):
+            self._params[param_key] = value
+        else:
+            self._params.append(value)
         return param_key, self._param_index
 
 
@@ -477,3 +458,18 @@ class Jinja2SQLExtension(Extension):
         if not name:
             name = "bind_0"
         return name
+
+
+def _is_positional_param_style(param_style: ParamStyle | ParamStyleFunc) -> bool:
+    """Check if the param_style is positional."""
+    return (
+        param_style
+        in (
+            "qmark",
+            "format",
+            "numeric",
+            "asyncpg",
+        )
+        or callable(param_style)
+        and "key" not in param_style("key", 0)
+    )
