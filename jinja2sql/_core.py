@@ -4,21 +4,9 @@ import contextlib
 import inspect
 import os
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Mapping,
-    NamedTuple,
-    Protocol,
-    Sequence,
-    TypeAlias,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import Any, Callable, Protocol, TypeVar, Union, overload
 
 import jinja2
 import jinja2.defaults
@@ -27,7 +15,7 @@ from jinja2.ext import Extension
 from jinja2.lexer import Token, TokenStream
 from jinja2.parser import Parser
 from markupsafe import Markup
-from typing_extensions import Literal, ParamSpec
+from typing_extensions import Literal, ParamSpec, TypeAlias
 
 _T_co = TypeVar("_T_co", covariant=True)
 T = TypeVar("T")
@@ -50,11 +38,6 @@ Context: TypeAlias = Mapping[str, Any]
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 DEFAULT_PARAM_STYLE: ParamStyle = "named"
-
-
-class RenderedQuery(NamedTuple):
-    query: str
-    params: Params
 
 
 class RenderContext:
@@ -234,7 +217,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a file."""
         with self._begin_render_context(
             param_style=param_style,
@@ -250,7 +233,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a string."""
         with self._begin_render_context(
             param_style=param_style,
@@ -266,7 +249,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a file asynchronously."""
         with self._begin_render_context(
             param_style=param_style,
@@ -282,7 +265,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a string asynchronously."""
         with self._begin_render_context(
             param_style=param_style,
@@ -319,23 +302,17 @@ class Jinja2SQL:
 
     def _render(
         self, template: jinja2.Template, context: Context | None
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Render a template."""
         query = template.render(context or {})
-        return RenderedQuery(
-            query=query,
-            params=self._render_context.params,
-        )
+        return query, self._render_context.params
 
     async def _render_async(
         self, template: jinja2.Template, context: Context | None
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Render a template asynchronously."""
         query = await template.render_async(context or {})
-        return RenderedQuery(
-            query=query,
-            params=self._render_context.params,
-        )
+        return query, self._render_context.params
 
     def _bind_param(self, key: str, value: Any, is_in_clause: bool = False) -> str:
         """Bind a parameter."""
