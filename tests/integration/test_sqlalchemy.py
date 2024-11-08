@@ -1,4 +1,4 @@
-from typing import Iterator
+from collections.abc import Iterator
 
 import pytest
 import sqlalchemy as sa
@@ -33,7 +33,7 @@ def test_supported_param_styles(
         param_style=param_style,
     )
 
-    result = conn.execute(sa.text(query).bindparams(**params)).fetchall()
+    result = conn.execute(sa.text(query).bindparams(**dict(params))).fetchall()
 
     assert result
     assert email in result[0]

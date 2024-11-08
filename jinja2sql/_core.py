@@ -4,19 +4,9 @@ import contextlib
 import inspect
 import os
 from collections import defaultdict
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    Mapping,
-    NamedTuple,
-    Protocol,
-    Sequence,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, Protocol, TypeVar, Union, overload
 
 import jinja2
 import jinja2.defaults
@@ -25,7 +15,7 @@ from jinja2.ext import Extension
 from jinja2.lexer import Token, TokenStream
 from jinja2.parser import Parser
 from markupsafe import Markup
-from typing_extensions import Literal, ParamSpec
+from typing_extensions import Literal, ParamSpec, TypeAlias
 
 _T_co = TypeVar("_T_co", covariant=True)
 T = TypeVar("T")
@@ -43,42 +33,11 @@ class ParamStyleFunc(Protocol):
 
 
 ParamStyle = Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
-
-
-class Params(Mapping[str, Any]):
-    def __init__(self, params: dict[str, Any] | None = None) -> None:
-        self._params = params or {}
-
-    def __getitem__(self, key: Any) -> Any:
-        if isinstance(key, int):
-            return list(self._params.values())[key]
-        return self._params[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._params)
-
-    def __len__(self) -> int:
-        return len(self._params)
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, tuple):
-            return tuple(self._params.values()) == other
-        return super().__eq__(other)
-
-    def __repr__(self) -> str:
-        return repr(self._params)
-
-
-Context = Mapping[str, Any]
-
+Params: TypeAlias = Union[Mapping[str, Any], Sequence[Any]]
+Context: TypeAlias = Mapping[str, Any]
 
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 DEFAULT_PARAM_STYLE: ParamStyle = "named"
-
-
-class RenderedQuery(NamedTuple):
-    query: str
-    params: Params
 
 
 class RenderContext:
@@ -95,7 +54,9 @@ class RenderContext:
         param_style: ParamStyle | ParamStyleFunc,
         identifier_quote_char: str,
     ) -> None:
-        self._params: dict[str, Any] = {}
+        self._params: list[Any] | dict[str, Any] = {}
+        if _is_positional_param_style(param_style):
+            self._params = []
         self._param_index: int = 0
         self._param_indexes: dict[str, int] = defaultdict(lambda: 0)
         self.param_style = param_style
@@ -104,7 +65,7 @@ class RenderContext:
     @property
     def params(self) -> Params:
         """Get the parameters."""
-        return Params(self._params)
+        return self._params
 
     def increment_param_index(self) -> None:
         """Increment the parameter index."""
@@ -123,7 +84,10 @@ class RenderContext:
         else:
             param_key_suffix = ""
         param_key = f"{name.replace('.', '__')}{param_key_suffix}"
-        self._params[param_key] = value
+        if isinstance(self._params, dict):
+            self._params[param_key] = value
+        else:
+            self._params.append(value)
         return param_key, self._param_index
 
 
@@ -253,7 +217,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a file."""
         with self._begin_render_context(
             param_style=param_style,
@@ -269,7 +233,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a string."""
         with self._begin_render_context(
             param_style=param_style,
@@ -285,7 +249,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a file asynchronously."""
         with self._begin_render_context(
             param_style=param_style,
@@ -301,7 +265,7 @@ class Jinja2SQL:
         context: Context | None = None,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Load a template from a string asynchronously."""
         with self._begin_render_context(
             param_style=param_style,
@@ -338,23 +302,17 @@ class Jinja2SQL:
 
     def _render(
         self, template: jinja2.Template, context: Context | None
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Render a template."""
         query = template.render(context or {})
-        return RenderedQuery(
-            query=query,
-            params=self._render_context.params,
-        )
+        return query, self._render_context.params
 
     async def _render_async(
         self, template: jinja2.Template, context: Context | None
-    ) -> RenderedQuery:
+    ) -> tuple[str, Params]:
         """Render a template asynchronously."""
         query = await template.render_async(context or {})
-        return RenderedQuery(
-            query=query,
-            params=self._render_context.params,
-        )
+        return query, self._render_context.params
 
     def _bind_param(self, key: str, value: Any, is_in_clause: bool = False) -> str:
         """Bind a parameter."""
@@ -477,3 +435,18 @@ class Jinja2SQLExtension(Extension):
         if not name:
             name = "bind_0"
         return name
+
+
+def _is_positional_param_style(param_style: ParamStyle | ParamStyleFunc) -> bool:
+    """Check if the param_style is positional."""
+    return (
+        param_style
+        in (
+            "qmark",
+            "format",
+            "numeric",
+            "asyncpg",
+        )
+        or callable(param_style)
+        and "key" not in param_style("key", 0)
+    )
