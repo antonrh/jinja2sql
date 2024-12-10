@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import inspect
 import os
-from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
 from typing import Any, Callable, Protocol, TypeVar, Union, overload
@@ -20,12 +19,6 @@ from typing_extensions import Literal, ParamSpec, TypeAlias
 _T_co = TypeVar("_T_co", covariant=True)
 T = TypeVar("T")
 P = ParamSpec("P")
-
-
-class SupportsLenAndGetItem(Protocol[_T_co]):
-    def __len__(self) -> int: ...
-
-    def __getitem__(self, __k: int) -> Any: ...
 
 
 class ParamStyleFunc(Protocol):
@@ -46,7 +39,6 @@ class RenderContext:
         "identifier_quote_char",
         "_params",
         "_param_index",
-        "_param_indexes",
     )
 
     def __init__(
@@ -58,7 +50,6 @@ class RenderContext:
         if _is_positional_param_style(param_style):
             self._params = []
         self._param_index: int = 0
-        self._param_indexes: dict[str, int] = defaultdict(lambda: 0)
         self.param_style = param_style
         self.identifier_quote_char = identifier_quote_char
 
@@ -67,22 +58,17 @@ class RenderContext:
         """Get the parameters."""
         return self._params
 
-    def increment_param_index(self) -> None:
-        """Increment the parameter index."""
-        self._param_index += 1
-
     def bind_param(
-        self, name: str, value: Any, is_in_clause: bool = False
+        self, name: str, value: Any, *, in_clause: bool = False
     ) -> tuple[str, int]:
         """Bind a parameter."""
         if jinja2.is_undefined(value):
             raise jinja2.UndefinedError(f"Undefined parameter '{name}' used in query.")
         self._param_index += 1
-        self._param_indexes[name] += 1
-        if is_in_clause:
-            param_key_suffix = f"_{self._param_indexes[name]}"
+        if in_clause:
+            param_key_suffix = f"__in__{self._param_index}"
         else:
-            param_key_suffix = ""
+            param_key_suffix = f"__{self._param_index}"
         param_key = f"{name.replace('.', '__')}{param_key_suffix}"
         if isinstance(self._params, dict):
             self._params[param_key] = value
@@ -314,10 +300,10 @@ class Jinja2SQL:
         query = await template.render_async(context or {})
         return query, self._render_context.params
 
-    def _bind_param(self, key: str, value: Any, is_in_clause: bool = False) -> str:
+    def _bind_param(self, key: str, value: Any, *, in_clause: bool = False) -> str:
         """Bind a parameter."""
         param_key, param_index = self._render_context.bind_param(
-            key, value, is_in_clause=is_in_clause
+            key, value, in_clause=in_clause
         )
         if callable(param_style := self._render_context.param_style):
             return param_style(param_key, param_index)
@@ -346,7 +332,7 @@ class Jinja2SQL:
         values = list(value)
         results = []
         for item in values:
-            results.append(self._bind_param(name, item, is_in_clause=True))
+            results.append(self._bind_param(name, item, in_clause=True))
         return f"({', '.join(results)})"
 
     def identifier(self, value: Any) -> Markup:

@@ -7,8 +7,6 @@
 To generate SQL queries from string templates, use the `from_string` method:
 
 ```python
-
-```python
 from jinja2sql import Jinja2SQL
 
 j2sql = Jinja2SQL(param_style="named")  # default param style is "named"
