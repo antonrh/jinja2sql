@@ -51,10 +51,15 @@ def test_bind_params_with_positional_param_style(
 @pytest.mark.parametrize(
     "param_style, expected_query",
     [
-        ("named", "SELECT * FROM table WHERE param1 = :param1 AND param2 = :param2"),
+        (
+            "named",
+            """SELECT * FROM table WHERE param1 = :param1__1
+            AND param2 = :param2__2""",
+        ),
         (
             "pyformat",
-            "SELECT * FROM table WHERE param1 = %(param1)s AND param2 = %(param2)s",
+            """SELECT * FROM table WHERE param1 = %(param1__1)s
+            AND param2 = %(param2__2)s""",
         ),
     ],
 )
@@ -71,7 +76,7 @@ def test_bind_params_with_keyword_param_style(
     )
 
     assert_sql(query, expected_query)
-    assert params == {"param1": param1, "param2": param2}
+    assert params == {"param1__1": param1, "param2__2": param2}
 
 
 @pytest.mark.parametrize(
@@ -104,10 +109,18 @@ def test_bind_inclause_params_with_positional_param_style(
 @pytest.mark.parametrize(
     "param_style, expected_query",
     [
-        ("named", "SELECT * FROM table WHERE param IN (:list_param_1, :list_param_2)"),
+        (
+            "named",
+            """
+            SELECT * FROM table WHERE param IN (:list_param__in__1, :list_param__in__2)
+            """,
+        ),
         (
             "pyformat",
-            "SELECT * FROM table WHERE param IN (%(list_param_1)s, %(list_param_2)s)",
+            """
+            SELECT * FROM table
+            WHERE param IN (%(list_param__in__1)s, %(list_param__in__2)s)
+            """,
         ),
     ],
 )
@@ -126,7 +139,7 @@ def test_bind_inclause_params_with_keyword_param_style(
     )
 
     assert_sql(query, expected_query)
-    assert params == {"list_param_1": value1, "list_param_2": value2}
+    assert params == {"list_param__in__1": value1, "list_param__in__2": value2}
 
 
 def test_bind_same_params_with_positional_param_style(j2sql: Jinja2SQL) -> None:
@@ -143,16 +156,35 @@ def test_bind_same_params_with_positional_param_style(j2sql: Jinja2SQL) -> None:
 
 
 def test_bind_custom_param_style(j2sql: Jinja2SQL) -> None:
-    param1 = "value1"
+    param = "value"
 
     query, params = j2sql.from_string(
-        "SELECT * FROM table WHERE param1 = {{ param1 }}",
+        "SELECT * FROM table WHERE param1 = {{ param }}",
         param_style=lambda key, index: f"{{{key}}}",
-        context={"param1": param1},
+        context={"param": param},
     )
 
-    assert_sql(query, "SELECT * FROM table WHERE param1 = {param1}")
-    assert params == {"param1": param1}
+    assert_sql(query, "SELECT * FROM table WHERE param1 = {param__1}")
+    assert params == {"param__1": param}
+
+
+def test_bind_in_loop(j2sql: Jinja2SQL) -> None:
+    query, params = j2sql.from_string(
+        """SELECT * FROM table WHERE TRUE
+        {%- for param in params %}
+        {%- if loop.first %} AND {% else %} OR {% endif %}param = {{ param }}
+        {%- endfor -%}
+        """,
+        param_style="named",
+        context={"params": ["one", "two"]},
+    )
+
+    assert_sql(
+        query,
+        """
+        SELECT * FROM table WHERE TRUE AND param = :param__1 OR param = :param__2""",
+    )
+    assert params == {"param__1": "one", "param__2": "two"}
 
 
 def test_identifier(j2sql: Jinja2SQL) -> None:
@@ -238,8 +270,8 @@ def test_register_filter(j2sql: Jinja2SQL) -> None:
         },
     )
 
-    assert_sql(query, "SELECT * FROM table WHERE param = :param")
-    assert params == {"param": "value_with_filter"}
+    assert_sql(query, "SELECT * FROM table WHERE param = :param__1")
+    assert params == {"param__1": "value_with_filter"}
 
 
 def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
@@ -271,8 +303,8 @@ def test_filter_decorator(j2sql: Jinja2SQL) -> None:
         },
     )
 
-    assert_sql(query, "SELECT * FROM table WHERE param = :param")
-    assert params == {"param": "value_with_decorator"}
+    assert_sql(query, "SELECT * FROM table WHERE param = :param__1")
+    assert params == {"param__1": "value_with_decorator"}
 
 
 def test_filter_decorator_with_self(j2sql: Jinja2SQL) -> None:
