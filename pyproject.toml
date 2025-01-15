@@ -1,12 +1,20 @@
-[tool.poetry]
+[project]
 name = "jinja2sql"
 version = "0.7.0"
 description = "Jinja Templates to SQL"
-authors = ["Anton Ruhlov <antonruhlov@gmail.com>"]
-license = "MIT"
+authors = [{ name = "Anton Ruhlov", email = "antonruhlov@gmail.com" }]
+requires-python = "~=3.9"
 readme = "README.md"
-repository = "https://github.com/antonrh/jinja2sql"
-keywords = ["sql", "query", "queries", "template", "jinja", "database", "db"]
+license = "MIT"
+keywords = [
+    "sql",
+    "query",
+    "queries",
+    "template",
+    "jinja",
+    "database",
+    "db",
+]
 classifiers = [
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
@@ -26,29 +34,33 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
 ]
-packages = [
-    { include = "jinja2sql", from = "." },
+dependencies = [
+    "jinja2>=3.1.2,<4",
+    "typing-extensions>=4.12.2,<5",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-jinja2 = "^3.1.2"
-typing-extensions = "^4.12.2"
-mkdocs = { version = "^1.6.0", optional = true }
-mkdocs-material = { version = "^9.5.25", optional = true }
+[project.urls]
+Repository = "https://github.com/antonrh/jinja2sql"
 
-[tool.poetry.extras]
-docs = ["mkdocs", "mkdocs-material"]
+[dependency-groups]
+dev = [
+    "mypy[faster-cache]>=1.14.1,<2",
+    "ruff>=0.9.1",
+    "pytest>=8.3.3,<9",
+    "pytest-cov>=5.0.0,<6",
+    "pytest-docker>=3.1.1,<4",
+    "pytest-asyncio>=0.24.0,<0.25",
+    "sqlalchemy>=2.0.30,<3",
+    "psycopg>=3.2.3,<4",
+]
+docs = [
+    "mkdocs>=1.6.0,<2",
+    "mkdocs-material>=9.5.25,<10",
+]
 
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.13.0"
-ruff = "^0.7.1"
-pytest = "^8.3.3"
-pytest-cov = "^5.0.0"
-pytest-docker = "^3.1.1"
-pytest-asyncio = "^0.24.0"
-sqlalchemy = "^2.0.30"
-psycopg = "^3.2.3"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 88
@@ -94,7 +106,3 @@ exclude_also = [
     "raise NotImplementedError",
     "except ImportError:",
 ]
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"

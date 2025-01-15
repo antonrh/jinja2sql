@@ -13,23 +13,20 @@ jobs:
     name: Code quality
     runs-on: ubuntu-latest
     steps:
-      - name: Install poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.8.4
-          echo "PATH=${HOME}/.poetry/bin:${PATH}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.9"
-          cache: "poetry"
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --all-extras --dev
       - name: Static type checking
-        run: poetry run mypy jinja2sql tests
+        run: uv run mypy jinja2sql tests
       - name: Code formatting
-        run: poetry run ruff check jinja2sql tests && poetry run ruff format jinja2sql tests --check
+        run: uv run ruff check jinja2sql tests && uv run ruff format jinja2sql tests --check
 
   tests:
     name: Run unit tests ${{ matrix.name }}
@@ -47,19 +44,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.8.4
-          echo "PATH=${HOME}/.poetry/bin:${PATH}" >> $GITHUB_ENV
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python }}
-          cache: "poetry"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
       - name: Install dependencies
-        run: poetry install
+        run: uv sync --all-extras --dev
       - name: Run tests
-        run: poetry run pytest -vv --cov=jinja2sql --cov-report=xml
+        run: uv run pytest -vv --cov=jinja2sql --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-        if: matrix.python == '3.10'
+        if: matrix.python == '3.9'
