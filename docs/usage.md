@@ -167,7 +167,32 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-## Customer filters
+## Raw SQL with `safe`
+
+By default, all template variables are automatically parameterized to prevent SQL injection.
+The Jinja2 built-in `safe` filter bypasses this behavior and inserts the value directly into the query **without parameterization**:
+
+```python
+from jinja2sql import Jinja2SQL
+
+j2sql = Jinja2SQL()
+
+query, params = j2sql.from_string(
+    "SELECT * FROM users ORDER BY {{ column | safe }} {{ direction | safe }}",
+    context={"column": "created_at", "direction": "DESC"},
+)
+
+assert query == "SELECT * FROM users ORDER BY created_at DESC"
+assert params == {}
+```
+
+!!! warning
+
+    **Never use `safe` with untrusted user input.** Values passed through `safe` are inserted into SQL as-is, which can lead to SQL injection. Use it only for values that you fully control in your code.
+
+    For dynamic table or column names, prefer the `identifier` filter instead — it provides proper escaping.
+
+## Custom filters
 
 `Jinja2SQL` supports custom filters to extend the functionality of the Jinja2 templating engine.
 
@@ -185,7 +210,7 @@ def array_filter(self: Jinja2SQL, value: list[str]) -> str:
 
 
 query, params = j2sql.from_string(
-    """SELECT ARRAY[{{ param | array2 }}] AS array""",
+    """SELECT ARRAY[{{ param | array }}] AS array""",
     context={
         "param": ["0", "1"],
     },

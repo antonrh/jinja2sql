@@ -362,7 +362,7 @@ class Jinja2SQL:
 class Jinja2SQLExtension(Extension):
     """Jinja2SQL extension."""
 
-    skip_filters = ("bind", "_bind_in", "safe")
+    skip_filters = ("bind", "_bind_in")
 
     def parse(self, parser: Parser) -> jinja2.nodes.Node | list[jinja2.nodes.Node]:
         """Parse the template."""
