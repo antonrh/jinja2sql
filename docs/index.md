@@ -15,7 +15,7 @@ http://jinja2sql.readthedocs.io/
 
 ## Requirements
 
-`Python 3.8+` and `Jinja2 3.1.2+`.
+`Python 3.10+` and `Jinja2 3.1.2+`.
 
 ## Installation
 
