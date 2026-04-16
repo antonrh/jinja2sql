@@ -3,7 +3,16 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
-from typing import Any, Literal, ParamSpec, Protocol, TypeAlias, TypeVar, overload
+from typing import (
+    Any,
+    Concatenate,
+    Literal,
+    ParamSpec,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    overload,
+)
 
 import jinja2
 import jinja2.nodes
@@ -188,6 +197,18 @@ class Jinja2SQL:
 
     # -- Filter registration ------------------------------------------------
 
+    @overload
+    def register_filter(self, name: str, func: Callable[..., Any]) -> None: ...
+
+    @overload
+    def register_filter(
+        self,
+        name: str,
+        func: Callable[Concatenate[Jinja2SQL, P], T],
+        *,
+        bind: Literal[True],
+    ) -> None: ...
+
     def register_filter(
         self, name: str, func: Callable[..., Any], *, bind: bool = False
     ) -> None:
@@ -204,19 +225,30 @@ class Jinja2SQL:
 
     @overload
     def filter(
-        self, *, name: str | None = None, bind: bool = False
+        self, *, name: str | None = None
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
+
+    @overload
+    def filter(
+        self, *, name: str | None = None, bind: Literal[True]
+    ) -> Callable[
+        [Callable[Concatenate[Jinja2SQL, P], T]],
+        Callable[Concatenate[Jinja2SQL, P], T],
+    ]: ...
 
     def filter(
         self,
-        func: Callable[P, T] | None = None,
+        func: Callable[..., Any] | None = None,
         *,
         name: str | None = None,
         bind: bool = False,
-    ) -> Callable[[Callable[P, T]], Callable[P, T]] | Callable[P, T]:
-        def decorator(func: Callable[P, T]) -> Callable[P, T]:
+    ) -> Any:
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             _name = name or func.__name__
-            self.register_filter(_name, func, bind=bind)
+            if bind:
+                self.register_filter(_name, func, bind=True)
+            else:
+                self.register_filter(_name, func)
             return func
 
         if func is None:
