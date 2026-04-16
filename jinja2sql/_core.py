@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import inspect
 import os
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
@@ -156,15 +155,11 @@ class Jinja2SQL:
         """Get the Jinja environment."""
         return self._env
 
-    def register_filter(self, name: str, func: Callable[..., Any]) -> None:
+    def register_filter(
+        self, name: str, func: Callable[..., Any], *, bind: bool = False
+    ) -> None:
         """Register a filter."""
-        has_self = any(
-            param
-            for param in inspect.signature(func).parameters.values()
-            if param.annotation is type(self)
-        )
-
-        if has_self:
+        if bind:
             self._env.filters[name] = lambda *args, **kwargs: func(
                 self, *args, **kwargs
             )
@@ -176,7 +171,7 @@ class Jinja2SQL:
 
     @overload
     def filter(
-        self, *, name: str | None = None
+        self, *, name: str | None = None, bind: bool = False
     ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
     def filter(
@@ -184,10 +179,11 @@ class Jinja2SQL:
         func: Callable[P, T] | None = None,
         *,
         name: str | None = None,
+        bind: bool = False,
     ) -> Callable[[Callable[P, T]], Callable[P, T]] | Callable[P, T]:
         def decorator(func: Callable[P, T]) -> Callable[P, T]:
             _name = name or func.__name__
-            self.register_filter(_name, func)
+            self.register_filter(_name, func, bind=bind)
             return func
 
         if func is None:

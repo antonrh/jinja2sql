@@ -204,9 +204,17 @@ from jinja2sql import Jinja2SQL
 j2sql = Jinja2SQL()
 
 
-@j2sql.filter(name="array")   # or j2sql.register_filter("array", array_filter)
-def array_filter(self: Jinja2SQL, value: list[str]) -> str:
-    return self.identifier(", ".join(f"'{item}'" for item in value))
+@j2sql.filter
+def lowercase(value: str) -> str:
+    return value.lower()
+```
+
+If you need access to the `Jinja2SQL` instance inside your filter (e.g. to call `identifier`), pass `bind=True` — the instance will be injected as the first argument:
+
+```python
+@j2sql.filter(name="array", bind=True)
+def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+    return j2sql.identifier(", ".join(f"'{item}'" for item in value))
 
 
 query, params = j2sql.from_string(

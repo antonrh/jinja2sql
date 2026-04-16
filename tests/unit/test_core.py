@@ -284,13 +284,13 @@ def test_register_filter() -> None:
     assert params == {"param__1": "value_with_filter"}
 
 
-def test_register_filter_with_self() -> None:
+def test_register_filter_with_bind() -> None:
     j2sql = Jinja2SQL()
 
     def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
         return j2sql.identifier(", ".join(f"'{item}'" for item in value))
 
-    j2sql.register_filter("array", array_filter)
+    j2sql.register_filter("array", array_filter, bind=True)
 
     query, params = j2sql.from_string(
         """SELECT ARRAY[{{ param | array }}] AS array""",
@@ -321,12 +321,12 @@ def test_filter_decorator() -> None:
     assert params == {"param__1": "value_with_decorator"}
 
 
-def test_filter_decorator_with_self() -> None:
+def test_filter_decorator_with_bind() -> None:
     j2sql = Jinja2SQL()
 
-    @j2sql.filter(name="array2")
-    def array_filter(self: Jinja2SQL, value: list[str]) -> str:
-        return self.identifier(", ".join(f"'{item}'" for item in value))
+    @j2sql.filter(name="array2", bind=True)
+    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+        return j2sql.identifier(", ".join(f"'{item}'" for item in value))
 
     query, params = j2sql.from_string(
         """SELECT ARRAY[{{ param | array2 }}] AS array""",
