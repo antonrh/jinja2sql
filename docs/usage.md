@@ -40,8 +40,9 @@ import jinja2
 
 from jinja2sql import Jinja2SQL
 
-env = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__name__).parent))
-j2sql = Jinja2SQL(env)
+j2sql = Jinja2SQL(
+    jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__name__).parent))
+)
 
 query, params = j2sql.from_file(
     "query.sql",
@@ -109,8 +110,7 @@ import jinja2
 
 from jinja2sql import Jinja2SQL
 
-env = jinja2.Environment(enable_async=True)
-j2sql = Jinja2SQL(env)
+j2sql = Jinja2SQL(jinja2.Environment(enable_async=True))
 ```
 
 ### String Templates
@@ -124,8 +124,7 @@ import jinja2
 
 from jinja2sql import Jinja2SQL
 
-env = jinja2.Environment(enable_async=True)
-j2sql = Jinja2SQL(env)
+j2sql = Jinja2SQL(jinja2.Environment(enable_async=True))
 
 
 async def main() -> None:
@@ -162,10 +161,12 @@ import jinja2
 
 from jinja2sql import Jinja2SQL
 
-env = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(Path(__name__).parent), enable_async=True
+j2sql = Jinja2SQL(
+    jinja2.Environment(
+        loader=jinja2.FileSystemLoader(Path(__name__).parent),
+        enable_async=True,
+    )
 )
-j2sql = Jinja2SQL(env)
 
 
 async def main() -> None:
