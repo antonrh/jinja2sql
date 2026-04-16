@@ -328,6 +328,8 @@ class Jinja2SQL:
     def bind_in_clause(self, value: Any, name: str) -> str:
         """Bind an IN clause."""
         values = list(value)
+        if not values:
+            raise ValueError("IN clause cannot be empty.")
         results = []
         for item in values:
             results.append(self._bind_param(name, item, in_clause=True))

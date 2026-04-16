@@ -106,6 +106,15 @@ def test_bind_inclause_params_with_positional_param_style(
     assert params == [value1, value2]
 
 
+def test_bind_inclause_empty_list(j2sql: Jinja2SQL) -> None:
+    with pytest.raises(ValueError, match="IN clause cannot be empty"):
+        j2sql.from_string(
+            "SELECT * FROM table WHERE param IN {{ list_param | inclause }}",
+            context={"list_param": []},
+            param_style="named",
+        )
+
+
 @pytest.mark.parametrize(
     "param_style, expected_query",
     [
