@@ -260,7 +260,8 @@ async def test_from_file_async(async_j2sql: Jinja2SQL) -> None:
     assert params == [param1, param2]
 
 
-def test_register_filter(j2sql: Jinja2SQL) -> None:
+def test_register_filter() -> None:
+    j2sql = Jinja2SQL()
     j2sql.register_filter("custom_filter", lambda value: f"{value}_with_filter")
 
     query, params = j2sql.from_string(
@@ -274,7 +275,9 @@ def test_register_filter(j2sql: Jinja2SQL) -> None:
     assert params == {"param__1": "value_with_filter"}
 
 
-def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
+def test_register_filter_with_self() -> None:
+    j2sql = Jinja2SQL()
+
     def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
         return j2sql.identifier(", ".join(f"'{item}'" for item in value))
 
@@ -291,7 +294,9 @@ def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
     assert params == {}
 
 
-def test_filter_decorator(j2sql: Jinja2SQL) -> None:
+def test_filter_decorator() -> None:
+    j2sql = Jinja2SQL()
+
     @j2sql.filter
     def custom_filter2(value: str) -> str:
         return f"{value}_with_decorator"
@@ -307,7 +312,9 @@ def test_filter_decorator(j2sql: Jinja2SQL) -> None:
     assert params == {"param__1": "value_with_decorator"}
 
 
-def test_filter_decorator_with_self(j2sql: Jinja2SQL) -> None:
+def test_filter_decorator_with_self() -> None:
+    j2sql = Jinja2SQL()
+
     @j2sql.filter(name="array2")
     def array_filter(self: Jinja2SQL, value: list[str]) -> str:
         return self.identifier(", ".join(f"'{item}'" for item in value))
