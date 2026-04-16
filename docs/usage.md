@@ -9,7 +9,7 @@ To generate SQL queries from string templates, use the `from_string` method:
 ```python
 from jinja2sql import Jinja2SQL
 
-j2sql = Jinja2SQL(param_style="named")  # default param style is "named"
+j2sql = Jinja2SQL()  # default param_style is "named"
 
 query, params = j2sql.from_string(
     "SELECT * FROM {{ table | identifier }} WHERE email = {{ email }}",
@@ -36,9 +36,12 @@ SELECT * FROM {{ table | identifier }} WHERE email = {{ email }}
 ```python
 from pathlib import Path
 
+import jinja2
+
 from jinja2sql import Jinja2SQL
 
-j2sql = Jinja2SQL(searchpath=Path(__name__).parent)  # default param style is "named"
+env = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__name__).parent))
+j2sql = Jinja2SQL(env)
 
 query, params = j2sql.from_file(
     "query.sql",
@@ -99,12 +102,15 @@ assert query == "SELECT * FROM table WHERE column = {email}"
 
 ## Async support
 
-`Jinja2SQL` supports asynchroneous query generation using the `enable_async` flag:
+`Jinja2SQL` supports asynchronous query generation. Pass a Jinja2 environment with `enable_async=True`:
 
 ```python
+import jinja2
+
 from jinja2sql import Jinja2SQL
 
-j2sql = Jinja2SQL(enable_async=True)
+env = jinja2.Environment(enable_async=True)
+j2sql = Jinja2SQL(env)
 ```
 
 ### String Templates
@@ -114,9 +120,12 @@ To generate SQL queries from string templates, use the `from_string_async` metho
 ```python
 import asyncio
 
+import jinja2
+
 from jinja2sql import Jinja2SQL
 
-j2sql = Jinja2SQL(param_style="named", enable_async=True)
+env = jinja2.Environment(enable_async=True)
+j2sql = Jinja2SQL(env)
 
 
 async def main() -> None:
@@ -149,9 +158,14 @@ SELECT * FROM {{ table | identifier }} WHERE email = {{ email }}
 import asyncio
 from pathlib import Path
 
+import jinja2
+
 from jinja2sql import Jinja2SQL
 
-j2sql = Jinja2SQL(searchpath=Path(__name__).parent, enable_async=True)
+env = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(Path(__name__).parent), enable_async=True
+)
+j2sql = Jinja2SQL(env)
 
 
 async def main() -> None:
@@ -166,6 +180,35 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
+
+## Manual binding with `autobind=False`
+
+By default, `Jinja2SQL` automatically parameterizes all template variables. If you prefer explicit control, disable auto-binding:
+
+```python
+from jinja2sql import Jinja2SQL
+
+j2sql = Jinja2SQL(autobind=False)
+
+query, params = j2sql.from_string(
+    "SELECT * FROM {{ table | identifier }}"
+    " WHERE email = {{ email | bind('email') }}"
+    " AND status IN {{ statuses | inclause('statuses') }}",
+    context={
+        "table": "users",
+        "email": "user@mail.com",
+        "statuses": ["active", "pending"],
+    },
+)
+
+assert query == (
+    'SELECT * FROM users'
+    ' WHERE email = :email__1'
+    ' AND status IN (:statuses__in__2, :statuses__in__3)'
+)
+```
+
+With `autobind=False`, variables without an explicit `bind` or `_bind_in` filter are rendered as plain text — no parameterization is applied.
 
 ## Raw SQL with `safe`
 
@@ -207,15 +250,24 @@ j2sql = Jinja2SQL()
 @j2sql.filter
 def lowercase(value: str) -> str:
     return value.lower()
+
+
+# or using register_filter
+j2sql.register_filter("lowercase", lambda value: value.lower())
 ```
 
-If you need access to the `Jinja2SQL` instance inside your filter (e.g. to call `identifier`), pass `bind=True` — the instance will be injected as the first argument:
+If you need access to the `Jinja2SQL` instance inside your filter, pass `bind=True` — the instance will be injected as the first argument:
 
 ```python
-@j2sql.filter(name="array", bind=True)
-def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
-    return j2sql.identifier(", ".join(f"'{item}'" for item in value))
+from jinja2sql import Jinja2SQL, identifier
 
+
+def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+    parts = ", ".join(f"'{item}'" for item in value)
+    return identifier(j2sql, parts)
+
+
+j2sql.register_filter("array", array_filter, bind=True)
 
 query, params = j2sql.from_string(
     """SELECT ARRAY[{{ param | array }}] AS array""",

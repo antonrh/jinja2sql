@@ -37,7 +37,7 @@ poetry add jinja2sql
 from jinja2sql import Jinja2SQL
 
 
-j2sql = Jinja2SQL(param_style="named")  # default param style is "named"
+j2sql = Jinja2SQL()  # default param_style is "named"
 
 query, params = j2sql.from_string(
     "SELECT * FROM {{ table | identifier }} WHERE email = {{ email }}",
