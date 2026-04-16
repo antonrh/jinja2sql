@@ -269,9 +269,12 @@ class Jinja2SQL:
         """Begin a render context."""
         token = self._render_context_var.set(
             RenderContext(
-                param_style=param_style or self.param_style,
+                param_style=param_style
+                if param_style is not None
+                else self.param_style,
                 identifier_quote_char=identifier_quote_char
-                or self.identifier_quote_char,
+                if identifier_quote_char is not None
+                else self.identifier_quote_char,
             )
         )
         try:
@@ -423,14 +426,8 @@ class Jinja2SQLExtension(Extension):
 
 def _is_positional_param_style(param_style: ParamStyle | ParamStyleFunc) -> bool:
     """Check if the param_style is positional."""
-    return (
-        param_style
-        in (
-            "qmark",
-            "format",
-            "numeric",
-            "asyncpg",
-        )
-        or callable(param_style)
-        and "key" not in param_style("key", 0)
-    )
+    if param_style in ("qmark", "format", "numeric", "asyncpg"):
+        return True
+    if callable(param_style):
+        return "key" not in param_style("key", 0)
+    return False
