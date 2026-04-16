@@ -1,5 +1,6 @@
 import pathlib
 
+import jinja2
 import pytest
 
 from jinja2sql._core import Jinja2SQL
@@ -18,9 +19,13 @@ def sql_path() -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
-    return Jinja2SQL(searchpath=sql_path)
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(sql_path))
+    return Jinja2SQL(env)
 
 
 @pytest.fixture(scope="session")
 def async_j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
-    return Jinja2SQL(searchpath=sql_path, enable_async=True)
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(sql_path), enable_async=True
+    )
+    return Jinja2SQL(env)

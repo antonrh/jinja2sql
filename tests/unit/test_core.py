@@ -1,8 +1,9 @@
 import pathlib
 
+import jinja2
 import pytest
 
-from jinja2sql import Jinja2SQL
+from jinja2sql import Jinja2SQL, identifier
 from jinja2sql._core import ParamStyle
 
 from tests.unit.asserts import assert_sql
@@ -15,12 +16,16 @@ def sql_path() -> pathlib.Path:
 
 @pytest.fixture(scope="session")
 def j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
-    return Jinja2SQL(searchpath=sql_path)
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(sql_path))
+    return Jinja2SQL(env)
 
 
 @pytest.fixture(scope="session")
 def async_j2sql(sql_path: pathlib.Path) -> Jinja2SQL:
-    return Jinja2SQL(searchpath=sql_path, enable_async=True)
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(sql_path), enable_async=True
+    )
+    return Jinja2SQL(env)
 
 
 @pytest.mark.parametrize(
@@ -104,6 +109,15 @@ def test_bind_inclause_params_with_positional_param_style(
 
     assert_sql(query, expected_query)
     assert params == [value1, value2]
+
+
+def test_bind_inclause_empty_list(j2sql: Jinja2SQL) -> None:
+    with pytest.raises(ValueError, match="IN clause cannot be empty"):
+        j2sql.from_string(
+            "SELECT * FROM table WHERE param IN {{ list_param | inclause }}",
+            context={"list_param": []},
+            param_style="named",
+        )
 
 
 @pytest.mark.parametrize(
@@ -198,6 +212,125 @@ def test_identifier(j2sql: Jinja2SQL) -> None:
     assert params == []
 
 
+@pytest.mark.parametrize(
+    "param_style, expected_query, expected_params",
+    [
+        (
+            "named",
+            "SELECT * FROM table WHERE p1 = :p1__1 AND p2 = :p2__2",
+            {"p1__1": "v1", "p2__2": "v2"},
+        ),
+        (
+            "qmark",
+            "SELECT * FROM table WHERE p1 = ? AND p2 = ?",
+            ["v1", "v2"],
+        ),
+        (
+            "asyncpg",
+            "SELECT * FROM table WHERE p1 = $1 AND p2 = $2",
+            ["v1", "v2"],
+        ),
+    ],
+)
+def test_explicit_bind(
+    j2sql: Jinja2SQL,
+    param_style: ParamStyle,
+    expected_query: str,
+    expected_params: dict[str, str] | list[str],
+) -> None:
+    query, params = j2sql.from_string(
+        "SELECT * FROM table"
+        " WHERE p1 = {{ p1 | bind('p1') }}"
+        " AND p2 = {{ p2 | bind('p2') }}",
+        context={"p1": "v1", "p2": "v2"},
+        param_style=param_style,
+    )
+
+    assert_sql(query, expected_query)
+    assert params == expected_params
+
+
+def test_explicit_bind_in(j2sql: Jinja2SQL) -> None:
+    query, params = j2sql.from_string(
+        "SELECT * FROM table WHERE param IN {{ items | inclause('items') }}",
+        context={"items": ["a", "b"]},
+        param_style="named",
+    )
+
+    assert_sql(
+        query,
+        "SELECT * FROM table WHERE param IN (:items__in__1, :items__in__2)",
+    )
+    assert params == {"items__in__1": "a", "items__in__2": "b"}
+
+
+def test_explicit_identifier(j2sql: Jinja2SQL) -> None:
+    query, params = j2sql.from_string(
+        "SELECT * FROM {{ table | identifier }}",
+        context={"table": "users"},
+        param_style="named",
+        identifier_quote_char='"',
+    )
+
+    assert_sql(query, 'SELECT * FROM "users"')
+    assert params == {}
+
+
+def test_explicit_bind_with_other_filters(j2sql: Jinja2SQL) -> None:
+    query, params = j2sql.from_string(
+        "SELECT * FROM table WHERE param = {{ param | upper | bind('param') }}",
+        context={"param": "value"},
+        param_style="named",
+    )
+
+    assert_sql(query, "SELECT * FROM table WHERE param = :param__1")
+    assert params == {"param__1": "VALUE"}
+
+
+def test_autobind_false() -> None:
+    j2sql = Jinja2SQL(autobind=False)
+
+    query, params = j2sql.from_string(
+        "SELECT * FROM {{ table | identifier }}"
+        " WHERE p1 = {{ p1 | bind('p1') }}"
+        " AND p2 = {{ p2 | bind('p2') }}",
+        context={"table": "users", "p1": "v1", "p2": "v2"},
+        param_style="named",
+    )
+
+    assert_sql(query, "SELECT * FROM users WHERE p1 = :p1__1 AND p2 = :p2__2")
+    assert params == {"p1__1": "v1", "p2__2": "v2"}
+
+
+def test_autobind_false_inclause() -> None:
+    j2sql = Jinja2SQL(autobind=False)
+
+    query, params = j2sql.from_string(
+        "SELECT * FROM table WHERE param IN {{ items | inclause('items') }}",
+        context={"items": ["a", "b"]},
+        param_style="named",
+    )
+
+    assert_sql(
+        query,
+        "SELECT * FROM table WHERE param IN (:items__in__1, :items__in__2)",
+    )
+    assert params == {"items__in__1": "a", "items__in__2": "b"}
+
+
+def test_autobind_false_no_bind_renders_raw() -> None:
+    j2sql = Jinja2SQL(autobind=False)
+
+    query, params = j2sql.from_string(
+        "SELECT * FROM table WHERE param = {{ param }}",
+        context={"param": "value"},
+        param_style="named",
+    )
+
+    assert_sql(query, "SELECT * FROM table WHERE param = value")
+    assert params == {}
+
+
 def test_safe_sql(j2sql: Jinja2SQL) -> None:
     query, params = j2sql.from_string(
         "SELECT * FROM table WHERE param = '{{ param | safe }}'",
@@ -260,7 +393,8 @@ async def test_from_file_async(async_j2sql: Jinja2SQL) -> None:
     assert params == [param1, param2]
 
 
-def test_register_filter(j2sql: Jinja2SQL) -> None:
+def test_register_filter() -> None:
+    j2sql = Jinja2SQL()
     j2sql.register_filter("custom_filter", lambda value: f"{value}_with_filter")
 
     query, params = j2sql.from_string(
@@ -274,11 +408,14 @@ def test_register_filter(j2sql: Jinja2SQL) -> None:
     assert params == {"param__1": "value_with_filter"}
 
 
-def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
-    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
-        return j2sql.identifier(", ".join(f"'{item}'" for item in value))
+def test_register_filter_with_bind() -> None:
+    j2sql = Jinja2SQL()
 
-    j2sql.register_filter("array", array_filter)
+    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+        parts = ", ".join(f"'{item}'" for item in value)
+        return identifier(j2sql, parts)
+
+    j2sql.register_filter("array", array_filter, bind=True)
 
     query, params = j2sql.from_string(
         """SELECT ARRAY[{{ param | array }}] AS array""",
@@ -291,7 +428,9 @@ def test_register_filter_with_self(j2sql: Jinja2SQL) -> None:
     assert params == {}
 
 
-def test_filter_decorator(j2sql: Jinja2SQL) -> None:
+def test_filter_decorator() -> None:
+    j2sql = Jinja2SQL()
+
     @j2sql.filter
     def custom_filter2(value: str) -> str:
         return f"{value}_with_decorator"
@@ -307,10 +446,13 @@ def test_filter_decorator(j2sql: Jinja2SQL) -> None:
     assert params == {"param__1": "value_with_decorator"}
 
 
-def test_filter_decorator_with_self(j2sql: Jinja2SQL) -> None:
-    @j2sql.filter(name="array2")
-    def array_filter(self: Jinja2SQL, value: list[str]) -> str:
-        return self.identifier(", ".join(f"'{item}'" for item in value))
+def test_filter_decorator_with_bind() -> None:
+    j2sql = Jinja2SQL()
+
+    @j2sql.filter(name="array2", bind=True)
+    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
+        parts = ", ".join(f"'{item}'" for item in value)
+        return identifier(j2sql, parts)
 
     query, params = j2sql.from_string(
         """SELECT ARRAY[{{ param | array2 }}] AS array""",
