@@ -36,7 +36,6 @@ classifiers = [
 ]
 dependencies = [
     "jinja2>=3.1.2,<4",
-    "typing-extensions>=4.12.2,<5",
 ]
 
 [project.urls]

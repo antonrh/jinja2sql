@@ -5,7 +5,7 @@ import inspect
 import os
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
-from typing import Any, Literal, Protocol, TypeAlias, TypeVar, overload
+from typing import Any, Literal, ParamSpec, Protocol, TypeAlias, TypeVar, overload
 
 import jinja2
 import jinja2.defaults
@@ -14,7 +14,6 @@ from jinja2.ext import Extension
 from jinja2.lexer import Token, TokenStream
 from jinja2.parser import Parser
 from markupsafe import Markup
-from typing_extensions import ParamSpec
 
 _T_co = TypeVar("_T_co", covariant=True)
 T = TypeVar("T")
