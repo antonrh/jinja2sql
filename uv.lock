@@ -323,7 +323,7 @@ wheels = [
 
 [[package]]
 name = "jinja2sql"
-version = "0.11.0"
+version = "0.12.0"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
