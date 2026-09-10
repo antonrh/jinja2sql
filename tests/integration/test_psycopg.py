@@ -45,10 +45,10 @@ def conn(
     conn = psycopg.connect(conninfo)
 
     query, _ = j2sql.from_file("postgres/schema.sql")
-    conn.execute(query)
+    conn.execute(query)  # ty: ignore[invalid-argument-type]
 
     query, _ = j2sql.from_file("postgres/users.sql")
-    conn.execute(query)
+    conn.execute(query)  # ty: ignore[invalid-argument-type]
 
     try:
         yield conn
@@ -69,7 +69,7 @@ def test_supported_param_styles(
     )
 
     cursor = conn.cursor()
-    result = cursor.execute(query, params).fetchall()
+    result = cursor.execute(query, params).fetchall()  # ty: ignore[invalid-argument-type]
 
     assert result
     assert email in result[0]

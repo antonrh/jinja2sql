@@ -30,7 +30,7 @@ P = ParamSpec("P")
 
 
 class ParamStyleFunc(Protocol):
-    def __call__(self, param_key: str, param_index: int) -> str: ...
+    def __call__(self, param_key: str, param_index: int, /) -> str: ...
 
 
 ParamStyle = Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
@@ -50,7 +50,7 @@ class Binder:
 
     __slots__ = (
         "param_style",
-        "identifier_quote_char",
+        "quote_char",
         "_params",
         "_param_index",
     )
@@ -58,14 +58,14 @@ class Binder:
     def __init__(
         self,
         param_style: ParamStyle | ParamStyleFunc,
-        identifier_quote_char: str,
+        quote_char: str,
     ) -> None:
         self._params: list[Any] | dict[str, Any] = {}
         if _is_positional_param_style(param_style):
             self._params = []
         self._param_index: int = 0
         self.param_style = param_style
-        self.identifier_quote_char = identifier_quote_char
+        self.quote_char = quote_char
 
     @property
     def params(self) -> Params:
@@ -100,7 +100,7 @@ class Binder:
         else:
             raise ValueError("identifier filter expects a string or an Iterable")
 
-        quote = self.identifier_quote_char
+        quote = self.quote_char
         return Markup(
             ".".join(
                 f"{quote}{item.replace(quote, quote * 2)}{quote}" for item in parts
@@ -247,7 +247,7 @@ class Jinja2SQL:
         bind: bool = False,
     ) -> Any:
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-            _name = name or func.__name__
+            _name = name or func.__name__  # ty: ignore[unresolved-attribute]
             if bind:
                 self.register_filter(_name, func, bind=True)
             else:
@@ -271,7 +271,7 @@ class Jinja2SQL:
         """Generate SQL from a string template."""
         with self._begin_render(
             param_style=param_style,
-            identifier_quote_char=identifier_quote_char,
+            quote_char=identifier_quote_char,
         ):
             template = self.env.from_string(source)
             return self._render(template, context)
@@ -287,7 +287,7 @@ class Jinja2SQL:
         """Generate SQL from a file template."""
         with self._begin_render(
             param_style=param_style,
-            identifier_quote_char=identifier_quote_char,
+            quote_char=identifier_quote_char,
         ):
             template = self.env.get_template(name)
             return self._render(template, context)
@@ -303,7 +303,7 @@ class Jinja2SQL:
         """Generate SQL from a string template asynchronously."""
         with self._begin_render(
             param_style=param_style,
-            identifier_quote_char=identifier_quote_char,
+            quote_char=identifier_quote_char,
         ):
             template = self.env.from_string(source)
             return await self._render_async(template, context)
@@ -319,7 +319,7 @@ class Jinja2SQL:
         """Generate SQL from a file template asynchronously."""
         with self._begin_render(
             param_style=param_style,
-            identifier_quote_char=identifier_quote_char,
+            quote_char=identifier_quote_char,
         ):
             template = self.env.get_template(name)
             return await self._render_async(template, context)
@@ -330,16 +330,16 @@ class Jinja2SQL:
     def _begin_render(
         self,
         param_style: ParamStyle | ParamStyleFunc | None = None,
-        identifier_quote_char: str | None = None,
+        quote_char: str | None = None,
     ) -> Iterator[None]:
         token = self.binder_var.set(
             Binder(
-                param_style=param_style
-                if param_style is not None
-                else self.param_style,
-                identifier_quote_char=identifier_quote_char
-                if identifier_quote_char is not None
-                else self.identifier_quote_char,
+                param_style=(
+                    param_style if param_style is not None else self.param_style
+                ),
+                quote_char=(
+                    quote_char if quote_char is not None else self.identifier_quote_char
+                ),
             )
         )
         try:
