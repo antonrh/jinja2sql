@@ -30,7 +30,7 @@ P = ParamSpec("P")
 
 
 class ParamStyleFunc(Protocol):
-    def __call__(self, param_key: str, param_index: int) -> str: ...
+    def __call__(self, param_key: str, param_index: int, /) -> str: ...
 
 
 ParamStyle = Literal["named", "qmark", "format", "numeric", "pyformat", "asyncpg"]
@@ -247,7 +247,7 @@ class Jinja2SQL:
         bind: bool = False,
     ) -> Any:
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-            _name = name or func.__name__
+            _name = name or func.__name__  # ty: ignore[unresolved-attribute]
             if bind:
                 self.register_filter(_name, func, bind=True)
             else:

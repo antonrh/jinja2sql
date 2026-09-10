@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
       - name: Static type checking
-        run: uv run mypy jinja2sql tests
+        run: uv run ty check
       - name: Code formatting
         run: uv run ruff check jinja2sql tests && uv run ruff format jinja2sql tests --check
 
