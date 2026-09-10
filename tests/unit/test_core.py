@@ -2,8 +2,9 @@ import pathlib
 
 import jinja2
 import pytest
+from markupsafe import Markup
 
-from jinja2sql import Jinja2SQL, identifier
+from jinja2sql import Binder, Jinja2SQL
 from jinja2sql._core import ParamStyle
 
 from tests.unit.asserts import assert_sql
@@ -411,21 +412,63 @@ def test_register_filter() -> None:
 def test_register_filter_with_bind() -> None:
     j2sql = Jinja2SQL()
 
-    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
-        parts = ", ".join(f"'{item}'" for item in value)
-        return identifier(j2sql, parts)
+    def array_filter(binder: Binder, value: list[str]) -> Markup:
+        bound = ", ".join(binder.bind("param", item) for item in value)
+        return binder.raw(f"ARRAY[{bound}]")
 
     j2sql.register_filter("array", array_filter, bind=True)
 
     query, params = j2sql.from_string(
-        """SELECT ARRAY[{{ param | array }}] AS array""",
+        """SELECT {{ param | array }} AS array""",
         context={
             "param": ["0", "1"],
         },
     )
 
-    assert_sql(query, "SELECT ARRAY['0', '1'] AS array")
+    assert_sql(query, "SELECT ARRAY[:param__1, :param__2] AS array")
+    assert params == {"param__1": "0", "param__2": "1"}
+
+
+def test_bound_filter_quotes_an_identifier() -> None:
+    j2sql = Jinja2SQL()
+
+    def sorted_by(binder: Binder, column: str) -> Markup:
+        return binder.raw(f"ORDER BY {binder.quote(column)} DESC")
+
+    j2sql.register_filter("sorted_by", sorted_by, bind=True)
+
+    query, params = j2sql.from_string(
+        """SELECT * FROM users {{ column | sorted_by }}""",
+        context={"column": "full name"},
+        identifier_quote_char='"',
+    )
+
+    assert_sql(query, 'SELECT * FROM users ORDER BY "full name" DESC')
     assert params == {}
+
+
+def test_bound_filter_that_marks_nothing_raw_is_bound_as_a_value() -> None:
+    j2sql = Jinja2SQL()
+
+    def doubled(binder: Binder, value: int) -> int:
+        return value * 2
+
+    j2sql.register_filter("doubled", doubled, bind=True)
+
+    query, params = j2sql.from_string(
+        """SELECT * FROM users WHERE age = {{ age | doubled }}""",
+        context={"age": 21},
+    )
+
+    assert_sql(query, "SELECT * FROM users WHERE age = :age__1")
+    assert params == {"age__1": 42}
+
+
+def test_the_binder_belongs_to_a_render() -> None:
+    j2sql = Jinja2SQL()
+
+    with pytest.raises(LookupError):
+        assert j2sql.binder
 
 
 def test_filter_decorator() -> None:
@@ -450,16 +493,16 @@ def test_filter_decorator_with_bind() -> None:
     j2sql = Jinja2SQL()
 
     @j2sql.filter(name="array2", bind=True)
-    def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
-        parts = ", ".join(f"'{item}'" for item in value)
-        return identifier(j2sql, parts)
+    def array_filter(binder: Binder, value: list[str]) -> Markup:
+        bound = ", ".join(binder.bind("param", item) for item in value)
+        return binder.raw(f"ARRAY[{bound}]")
 
     query, params = j2sql.from_string(
-        """SELECT ARRAY[{{ param | array2 }}] AS array""",
+        """SELECT {{ param | array2 }} AS array""",
         context={
             "param": ["0", "1"],
         },
     )
 
-    assert_sql(query, "SELECT ARRAY['0', '1'] AS array")
-    assert params == {}
+    assert_sql(query, "SELECT ARRAY[:param__1, :param__2] AS array")
+    assert params == {"param__1": "0", "param__2": "1"}

@@ -257,23 +257,54 @@ def lowercase(value: str) -> str:
 j2sql.register_filter("lowercase", lambda value: value.lower())
 ```
 
-If you need access to the `Jinja2SQL` instance inside your filter, pass `bind=True` — the instance will be injected as the first argument:
+A filter like that returns a value, and `Jinja2SQL` binds what it returns.
+
+For a filter that writes SQL rather than a value, an operator carrying values of its own, pass `bind=True`. It is then called with the `Binder` of the render as its first argument:
 
 ```python
-from jinja2sql import Jinja2SQL, identifier
+from datetime import date
+
+from markupsafe import Markup
+
+from jinja2sql import Binder, Jinja2SQL
+
+j2sql = Jinja2SQL()
 
 
-def array_filter(j2sql: Jinja2SQL, value: list[str]) -> str:
-    parts = ", ".join(f"'{item}'" for item in value)
-    return identifier(j2sql, parts)
+def in_span(binder: Binder, span: tuple[date, date]) -> Markup:
+    start, end = span
+    return binder.raw(
+        f"BETWEEN {binder.bind('span', start)} AND {binder.bind('span', end)}"
+    )
 
 
-j2sql.register_filter("array", array_filter, bind=True)
+j2sql.register_filter("in_span", in_span, bind=True)
 
 query, params = j2sql.from_string(
-    """SELECT ARRAY[{{ param | array }}] AS array""",
+    """SELECT * FROM orders WHERE placed_at {{ span | in_span }}""",
     context={
-        "param": ["0", "1"],
+        "span": (date(2026, 1, 1), date(2026, 2, 1)),
     },
 )
+
+# SELECT * FROM orders WHERE placed_at BETWEEN :span__1 AND :span__2
+# {"span__1": date(2026, 1, 1), "span__2": date(2026, 2, 1)}
 ```
+
+The binder gives a filter three things, and nothing else:
+
+| method | what it does |
+| --- | --- |
+| `bind(name, value)` | binds one value, and returns the placeholder standing for it |
+| `quote(name)` | quotes a table or column name, as the `identifier` filter does |
+| `raw(sql)` | marks the result as SQL rather than as one more value to bind |
+
+The name passed to `bind` is a prefix rather than the parameter's name, so two values bound as `span` become `:span__1` and `:span__2` and neither overwrites the other.
+
+`raw` is what separates the two kinds of filter. Without it the fragment is bound as a single value, and the query compares a column to the string `BETWEEN :span__1 AND :span__2`.
+
+A binder belongs to one render. Reading `j2sql.binder` outside a render raises `LookupError`, since there is nothing to bind to.
+
+!!! warning "Changed in 0.12"
+
+    `bind=True` used to inject the `Jinja2SQL` instance, and a filter written for it called the module-level `bind(j2sql, value, name)` or `identifier(j2sql, value)`. Both now take the binder, so such a filter becomes `binder.bind(name, value)` and `binder.quote(value)`.

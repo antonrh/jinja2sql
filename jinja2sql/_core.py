@@ -41,11 +41,13 @@ DEFAULT_PARAM_STYLE: ParamStyle = "named"
 DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 
 # ---------------------------------------------------------------------------
-# RenderContext — per-render state
+# Binder — per-render state
 # ---------------------------------------------------------------------------
 
 
-class RenderContext:
+class Binder:
+    """The parameters of one render, and how they are written."""
+
     __slots__ = (
         "param_style",
         "identifier_quote_char",
@@ -69,6 +71,45 @@ class RenderContext:
     def params(self) -> Params:
         """Get the parameters."""
         return self._params
+
+    def bind(self, name: str, value: Any, *, in_clause: bool = False) -> str:
+        """Bind a value and return the placeholder for it."""
+        param_key, param_index = self.bind_param(name, value, in_clause=in_clause)
+        if callable(param_style := self.param_style):
+            return param_style(param_key, param_index)
+        elif param_style == "named":
+            return f":{param_key}"
+        elif param_style == "qmark":
+            return "?"
+        elif param_style == "format":
+            return "%s"
+        elif param_style == "numeric":
+            return f":{param_index}"
+        elif param_style == "pyformat":
+            return f"%({param_key})s"
+        elif param_style == "asyncpg":
+            return f"${param_index}"
+        raise ValueError(f"Invalid param_style - {param_style}")
+
+    def quote(self, value: Any) -> Markup:
+        """Escape and quote a SQL identifier."""
+        if isinstance(value, str):
+            parts: Iterable[str] = (value,)
+        elif isinstance(value, Iterable):
+            parts = value
+        else:
+            raise ValueError("identifier filter expects a string or an Iterable")
+
+        quote = self.identifier_quote_char
+        return Markup(
+            ".".join(
+                f"{quote}{item.replace(quote, quote * 2)}{quote}" for item in parts
+            )
+        )
+
+    def raw(self, sql: str) -> Markup:
+        """Mark a fragment as SQL rather than as a value to bind."""
+        return Markup(sql)
 
     def bind_param(
         self, name: str, value: Any, *, in_clause: bool = False
@@ -94,66 +135,25 @@ class RenderContext:
 # ---------------------------------------------------------------------------
 
 
-def _bind_param(
-    self: Jinja2SQL,
-    key: str,
-    value: Any,
-    *,
-    in_clause: bool = False,
-) -> str:
-    """Bind a parameter and return the formatted placeholder."""
-    render_context = self.render_context_var.get()
-    param_key, param_index = render_context.bind_param(key, value, in_clause=in_clause)
-    if callable(param_style := render_context.param_style):
-        return param_style(param_key, param_index)
-    elif param_style == "named":
-        return f":{param_key}"
-    elif param_style == "qmark":
-        return "?"
-    elif param_style == "format":
-        return "%s"
-    elif param_style == "numeric":
-        return f":{param_index}"
-    elif param_style == "pyformat":
-        return f"%({param_key})s"
-    elif param_style == "asyncpg":
-        return f"${param_index}"
-    raise ValueError(f"Invalid param_style - {param_style}")
-
-
-def bind(self: Jinja2SQL, value: Any, name: str) -> Markup | str:
+def bind(binder: Binder, value: Any, name: str) -> Markup | str:
     """Bind a parameter value to a SQL placeholder."""
     if isinstance(value, Markup):
         return value
-    return _bind_param(self, name, value)
+    return binder.bind(name, value)
 
 
-def bind_in(self: Jinja2SQL, value: Any, name: str) -> str:
+def bind_in(binder: Binder, value: Any, name: str) -> str:
     """Bind multiple values for an IN clause."""
     values = list(value)
     if not values:
         raise ValueError("IN clause cannot be empty.")
-    results = []
-    for item in values:
-        results.append(_bind_param(self, name, item, in_clause=True))
+    results = [binder.bind(name, item, in_clause=True) for item in values]
     return f"({', '.join(results)})"
 
 
-def identifier(self: Jinja2SQL, value: Any) -> Markup:
+def identifier(binder: Binder, value: Any) -> Markup:
     """Escape and quote a SQL identifier."""
-    if isinstance(value, str):
-        parts = (value,)
-    else:
-        parts = value
-    if not isinstance(value, Iterable):
-        raise ValueError("identifier filter expects a string or an Iterable")
-
-    def _quote_and_escape(item: str) -> str:
-        render_context = self.render_context_var.get()
-        quote = render_context.identifier_quote_char
-        return f"{quote}{item.replace(quote, quote * 2)}{quote}"
-
-    return Markup(".".join(_quote_and_escape(item) for item in parts))
+    return binder.quote(value)
 
 
 # ---------------------------------------------------------------------------
@@ -172,9 +172,7 @@ class Jinja2SQL:
     ):
         self.param_style = param_style
         self.identifier_quote_char = identifier_quote_char
-        self.render_context_var: ContextVar[RenderContext] = ContextVar(
-            "render_context"
-        )
+        self.binder_var: ContextVar[Binder] = ContextVar("binder")
 
         if env is None:
             env = jinja2.Environment()
@@ -195,6 +193,11 @@ class Jinja2SQL:
         """Get the Jinja environment."""
         return self._env
 
+    @property
+    def binder(self) -> Binder:
+        """Get the binder of the current render."""
+        return self.binder_var.get()
+
     # -- Filter registration ------------------------------------------------
 
     @overload
@@ -204,7 +207,7 @@ class Jinja2SQL:
     def register_filter(
         self,
         name: str,
-        func: Callable[Concatenate[Jinja2SQL, P], T],
+        func: Callable[Concatenate[Binder, P], T],
         *,
         bind: Literal[True],
     ) -> None: ...
@@ -212,10 +215,10 @@ class Jinja2SQL:
     def register_filter(
         self, name: str, func: Callable[..., Any], *, bind: bool = False
     ) -> None:
-        """Register a filter."""
+        """Register a filter, called with the render's binder if ``bind`` is set."""
         if bind:
             self._env.filters[name] = lambda *args, **kwargs: func(
-                self, *args, **kwargs
+                self.binder, *args, **kwargs
             )
         else:
             self._env.filters[name] = func
@@ -232,8 +235,8 @@ class Jinja2SQL:
     def filter(
         self, *, name: str | None = None, bind: Literal[True]
     ) -> Callable[
-        [Callable[Concatenate[Jinja2SQL, P], T]],
-        Callable[Concatenate[Jinja2SQL, P], T],
+        [Callable[Concatenate[Binder, P], T]],
+        Callable[Concatenate[Binder, P], T],
     ]: ...
 
     def filter(
@@ -266,7 +269,7 @@ class Jinja2SQL:
         identifier_quote_char: str | None = None,
     ) -> tuple[str, Params]:
         """Generate SQL from a string template."""
-        with self._begin_render_context(
+        with self._begin_render(
             param_style=param_style,
             identifier_quote_char=identifier_quote_char,
         ):
@@ -282,7 +285,7 @@ class Jinja2SQL:
         identifier_quote_char: str | None = None,
     ) -> tuple[str, Params]:
         """Generate SQL from a file template."""
-        with self._begin_render_context(
+        with self._begin_render(
             param_style=param_style,
             identifier_quote_char=identifier_quote_char,
         ):
@@ -298,7 +301,7 @@ class Jinja2SQL:
         identifier_quote_char: str | None = None,
     ) -> tuple[str, Params]:
         """Generate SQL from a string template asynchronously."""
-        with self._begin_render_context(
+        with self._begin_render(
             param_style=param_style,
             identifier_quote_char=identifier_quote_char,
         ):
@@ -314,7 +317,7 @@ class Jinja2SQL:
         identifier_quote_char: str | None = None,
     ) -> tuple[str, Params]:
         """Generate SQL from a file template asynchronously."""
-        with self._begin_render_context(
+        with self._begin_render(
             param_style=param_style,
             identifier_quote_char=identifier_quote_char,
         ):
@@ -324,13 +327,13 @@ class Jinja2SQL:
     # -- Internal -----------------------------------------------------------
 
     @contextlib.contextmanager
-    def _begin_render_context(
+    def _begin_render(
         self,
         param_style: ParamStyle | ParamStyleFunc | None = None,
         identifier_quote_char: str | None = None,
     ) -> Iterator[None]:
-        token = self.render_context_var.set(
-            RenderContext(
+        token = self.binder_var.set(
+            Binder(
                 param_style=param_style
                 if param_style is not None
                 else self.param_style,
@@ -342,19 +345,19 @@ class Jinja2SQL:
         try:
             yield
         finally:
-            self.render_context_var.reset(token)
+            self.binder_var.reset(token)
 
     def _render(
         self, template: jinja2.Template, context: Context | None
     ) -> tuple[str, Params]:
         query = template.render(context or {})
-        return query, self.render_context_var.get().params
+        return query, self.binder.params
 
     async def _render_async(
         self, template: jinja2.Template, context: Context | None
     ) -> tuple[str, Params]:
         query = await template.render_async(context or {})
-        return query, self.render_context_var.get().params
+        return query, self.binder.params
 
 
 # ---------------------------------------------------------------------------
