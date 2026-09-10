@@ -46,19 +46,7 @@ DEFAULT_IDENTIFIER_QUOTE_CHAR = ""
 
 
 class Binder:
-    """The values one render binds, and how it writes them.
-
-    A filter registered with ``bind=True`` is called with the binder of the
-    render in front of its own arguments:
-
-    ```python
-    def in_span(binder: Binder, span: tuple[date, date]) -> Markup:
-        start, end = span
-        return binder.raw(
-            f"BETWEEN {binder.bind('span', start)} AND {binder.bind('span', end)}"
-        )
-    ```
-    """
+    """The parameters of one render, and how they are written."""
 
     __slots__ = (
         "param_style",
@@ -81,15 +69,11 @@ class Binder:
 
     @property
     def params(self) -> Params:
-        """Get the parameters bound so far."""
+        """Get the parameters."""
         return self._params
 
     def bind(self, name: str, value: Any, *, in_clause: bool = False) -> str:
-        """Bind a value and return the placeholder standing for it.
-
-        The name is a prefix rather than the parameter's name, so two values
-        bound as `span` are `:span__1` and `:span__2`.
-        """
+        """Bind a value and return the placeholder for it."""
         param_key, param_index = self.bind_param(name, value, in_clause=in_clause)
         if callable(param_style := self.param_style):
             return param_style(param_key, param_index)
@@ -108,7 +92,7 @@ class Binder:
         raise ValueError(f"Invalid param_style - {param_style}")
 
     def quote(self, value: Any) -> Markup:
-        """Quote a table or column name the way this render quotes one."""
+        """Escape and quote a SQL identifier."""
         if isinstance(value, str):
             parts: Iterable[str] = (value,)
         elif isinstance(value, Iterable):
@@ -124,13 +108,13 @@ class Binder:
         )
 
     def raw(self, sql: str) -> Markup:
-        """Mark a fragment as SQL, rather than as one more value to bind."""
+        """Mark a fragment as SQL rather than as a value to bind."""
         return Markup(sql)
 
     def bind_param(
         self, name: str, value: Any, *, in_clause: bool = False
     ) -> tuple[str, int]:
-        """Bind a value, and return the key it took and its position."""
+        """Bind a parameter."""
         if jinja2.is_undefined(value):
             raise jinja2.UndefinedError(f"Undefined parameter '{name}' used in query.")
         self._param_index += 1
@@ -211,11 +195,7 @@ class Jinja2SQL:
 
     @property
     def binder(self) -> Binder:
-        """The binder of the render running now.
-
-        Raises:
-            LookupError: outside a render, where there is nothing to bind to.
-        """
+        """Get the binder of the current render."""
         return self.binder_var.get()
 
     # -- Filter registration ------------------------------------------------
@@ -235,12 +215,7 @@ class Jinja2SQL:
     def register_filter(
         self, name: str, func: Callable[..., Any], *, bind: bool = False
     ) -> None:
-        """Register a filter.
-
-        With ``bind=True`` the filter is called with the `Binder` of the render
-        in front of its own arguments, which is what a filter writing SQL of its
-        own binds the values in it through.
-        """
+        """Register a filter, called with the render's binder if ``bind`` is set."""
         if bind:
             self._env.filters[name] = lambda *args, **kwargs: func(
                 self.binder, *args, **kwargs
